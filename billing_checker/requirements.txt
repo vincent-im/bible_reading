@@ -1,0 +1,42 @@
+# 청구 금액 비교 자동화 시스템 - 의존성 패키지
+
+# 설정 파일 파싱
+PyYAML>=6.0
+
+# HTML 파싱
+beautifulsoup4>=4.12.0
+lxml>=4.9.0
+
+# Excel 읽기/쓰기
+openpyxl>=3.1.0
+pandas>=2.0.0
+
+# 문자열 유사도 비교 (fuzzy matching)
+thefuzz>=0.20.0
+python-Levenshtein>=0.21.0  # thefuzz 성능 향상용 (선택)
+
+# 리포트 생성
+Jinja2>=3.1.0
+XlsxWriter>=3.1.0
+
+# 날짜/시간 처리
+python-dateutil>=2.8.0
+
+# 데이터 검증
+pydantic>=2.0.0
+
+# ── Windows Outlook COM 연동 (Windows 전용) ────────────────────
+# Windows 환경에서 Outlook COM API 사용 시 설치
+# pywin32>=306
+
+# ── Microsoft Graph API 연동 (클라우드 Outlook) ───────────────
+# Microsoft 365 / Exchange Online 사용 시 설치
+# msal>=1.24.0
+# requests>=2.31.0
+
+# ── SMTP 이메일 발송 ──────────────────────────────────────────
+# 표준 라이브러리 (smtplib) 사용으로 별도 설치 불필요
+
+# ── 개발/테스트 ───────────────────────────────────────────────
+pytest>=7.4.0
+pytest-cov>=4.1.0

@@ -1,0 +1,115 @@
+# ============================================================
+# 청구 금액 비교 자동화 시스템 - 설정 파일
+# ============================================================
+
+# ── 이메일 검색 설정 ──────────────────────────────────────────
+email:
+  # 읽어올 Outlook 폴더 이름 (예: "받은 편지함", "청구서")
+  inbox_folder: "받은 편지함"
+  # 청구 HTML 이메일 식별 키워드 (제목에 포함되면 청구 이메일로 인식)
+  subject_keywords:
+    - "청구"
+    - "invoice"
+    - "Invoice"
+    - "청구서"
+  # 처리할 최근 이메일 수 (0이면 전체)
+  max_emails: 50
+  # 이메일 날짜 필터 (오늘 기준 N일 이내, 0이면 필터 없음)
+  days_back: 30
+
+# ── Excel 파일 설정 ───────────────────────────────────────────
+excel:
+  # Excel 파일 경로 (절대 경로 또는 상대 경로)
+  file_path: "sample_data/total_billing.xlsx"
+  # 데이터가 있는 시트 이름 (비워두면 첫 번째 시트)
+  sheet_name: "청구내역"
+  # 헤더 행 번호 (0-based)
+  header_row: 0
+  # 컬럼 매핑 (Excel 컬럼명 → 프로그램 내부 필드명)
+  columns:
+    client_name: "고객사명"       # 고객사 이름
+    item_name: "항목"             # 청구 항목
+    amount: "금액"                # 청구 금액
+    manager_name: "담당자"        # 담당자 이름
+    manager_email: "담당자이메일" # 담당자 이메일 주소
+    client_email: "고객사이메일"  # 고객사 이메일 주소
+    billing_month: "청구월"       # 청구 대상 월 (예: 2024-01)
+
+# ── HTML 이메일 파싱 설정 ─────────────────────────────────────
+html_parsing:
+  # 금액 추출 방식: "table" | "pattern" | "auto"
+  method: "auto"
+  # [table 방식] 합계 금액이 있는 행의 키워드
+  total_row_keywords:
+    - "합계"
+    - "총액"
+    - "total"
+    - "Total"
+    - "TOTAL"
+    - "합  계"
+    - "청구금액"
+  # [pattern 방식] 금액 추출 정규식 패턴들 (순서대로 시도)
+  amount_patterns:
+    - "합계[\\s:：]*([\\d,]+)\\s*원"
+    - "청구금액[\\s:：]*([\\d,]+)\\s*원"
+    - "총액[\\s:：]*([\\d,]+)\\s*원"
+    - "Total[\\s:：]*([\\d,]+)"
+    - "([\\d,]+)\\s*원"
+  # 고객사명 추출 패턴
+  client_patterns:
+    - "고객사[\\s:：]*([^\\n<]+)"
+    - "청구처[\\s:：]*([^\\n<]+)"
+    - "수신[\\s:：]*([^\\n<]+)"
+  # 청구월 추출 패턴
+  billing_month_patterns:
+    - "(\\d{4}[-./]\\d{1,2})\\s*(?:월|청구)"
+    - "청구월[\\s:：]*(\\d{4}[-./]\\d{1,2})"
+
+# ── 금액 비교 설정 ────────────────────────────────────────────
+comparison:
+  # 허용 오차 금액 (이 금액 이하 차이는 일치로 간주, 원 단위)
+  tolerance_amount: 0
+  # 허용 오차 비율 (0.0 ~ 1.0, 예: 0.01 = 1%, 0이면 비율 비교 안 함)
+  tolerance_ratio: 0.0
+  # 고객사명 매칭 방식: "exact" | "fuzzy"
+  client_matching: "fuzzy"
+  # fuzzy 매칭 유사도 임계값 (0~100, 높을수록 엄격)
+  fuzzy_threshold: 80
+
+# ── 발송 이메일 설정 ──────────────────────────────────────────
+sender:
+  # 발송자 이름 (Outlook 기본값 사용 시 비워두기)
+  sender_name: ""
+  # 발송자 이메일 (Outlook 기본값 사용 시 비워두기)
+  sender_email: ""
+  # 이메일 발송 방식: "outlook_com" | "graph_api" | "smtp" | "dry_run"
+  # dry_run: 실제 발송 없이 로그만 출력 (테스트용)
+  method: "dry_run"
+  # [graph_api 방식] Azure 앱 설정
+  graph_api:
+    tenant_id: ""
+    client_id: ""
+    client_secret: ""
+  # [smtp 방식] SMTP 서버 설정
+  smtp:
+    host: "smtp.office365.com"
+    port: 587
+    username: ""
+    password: ""
+    use_tls: true
+
+# ── 리포트 설정 ───────────────────────────────────────────────
+report:
+  # 리포트 저장 폴더
+  output_dir: "reports"
+  # 리포트 파일 형식: "excel" | "html" | "both"
+  format: "both"
+  # 리포트 파일명 접두사
+  filename_prefix: "billing_comparison"
+
+# ── 로그 설정 ─────────────────────────────────────────────────
+logging:
+  # 로그 레벨: DEBUG | INFO | WARNING | ERROR
+  level: "INFO"
+  # 로그 파일 경로 (비워두면 콘솔만 출력)
+  file: "billing_checker.log"
