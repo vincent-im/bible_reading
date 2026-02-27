@@ -26,16 +26,41 @@ for _f in font_manager.findSystemFonts():
         plt.rcParams['font.family'] = font_manager.FontProperties(fname=_f).get_name()
         break
 # ════════════════════════════════════════════════════════════════
-# 1.  데이터 수집  (FinanceDataReader)
+# 1.  데이터 수집  (FinanceDataReader → 실패 시 합성 데이터 폴백)
 # ════════════════════════════════════════════════════════════════
 import FinanceDataReader as fdr
 end   = datetime.today()
 start = end - timedelta(days=365)
+
+def _make_synthetic(seed: int, base: float, sigma: float,
+                    drift: float = 0.0) -> pd.DataFrame:
+    """영업일 기준 합성 주가/지수 데이터 생성"""
+    rng = np.random.default_rng(seed)
+    dates = pd.bdate_range(start, end)
+    n = len(dates)
+    daily = rng.normal(drift, sigma, n)
+    prices = base * np.exp(np.cumsum(daily))
+    volume = (rng.integers(100_000, 1_000_000, n)).astype(float)
+    df = pd.DataFrame({'Close': prices, 'Volume': volume}, index=dates)
+    df.index.name = 'Date'
+    return df
+
 print("데이터 수집 중...")
-df_kospi = fdr.DataReader('KS11',   start, end)   # KOSPI 지수
-df_skt   = fdr.DataReader('017670', start, end)   # SK텔레콤
+try:
+    import FinanceDataReader as fdr
+    df_kospi = fdr.DataReader('KS11',   start, end)
+    df_skt   = fdr.DataReader('017670', start, end)
+    data_src = "FinanceDataReader (실시간)"
+except Exception as e:
+    print(f"  [경고] 실시간 데이터 수집 실패 ({e.__class__.__name__}): {e}")
+    print("  → 합성 데이터(Synthetic Data)로 대체합니다.")
+    df_kospi = _make_synthetic(seed=42,  base=2550.0, sigma=0.008, drift=0.0002)
+    df_skt   = _make_synthetic(seed=137, base=52000,  sigma=0.012, drift=0.0001)
+    data_src = "Synthetic Data (네트워크 차단으로 인한 시뮬레이션)"
+
 print(f"  KOSPI  : {len(df_kospi)}일  ({df_kospi.index[0].date()} ~ {df_kospi.index[-1].date()})")
 print(f"  SK텔레콤: {len(df_skt)}일  ({df_skt.index[0].date()} ~ {df_skt.index[-1].date()})")
+print(f"  데이터 출처: {data_src}")
 # ════════════════════════════════════════════════════════════════
 # 2.  이동평균 계산
 # ════════════════════════════════════════════════════════════════
@@ -235,7 +260,7 @@ fig.text(
     f"분석 기간: {start.strftime('%Y-%m-%d')} ~ {end.strftime('%Y-%m-%d')}  |  "
     "▲ Golden Cross: MA5 ↑ MA20 상향돌파  |  "
     "▼ Dead Cross: MA5 ↓ MA20 하향돌파  |  "
-    "Data: FinanceDataReader",
+    f"Data: {data_src}",
     ha='center', color='#484F58', fontsize=8.5)
 # ════════════════════════════════════════════════════════════════
 # 5.  저장
