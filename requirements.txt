@@ -1,0 +1,4 @@
+finance-datareader
+matplotlib
+pandas
+scipy
