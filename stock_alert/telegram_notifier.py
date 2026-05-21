@@ -24,7 +24,8 @@ class TelegramNotifier:
             return False
 
     def send_sell_alert(self, ticker: str, signal_type: str, message: str,
-                        current_price: float, buy_price: float, change_pct: float):
+                        current_price: float, buy_price: float, change_pct: float,
+                        name: str = ""):
         icon_map = {
             "STOP_LOSS":      "🔴",
             "TAKE_PROFIT":    "🟢",
@@ -35,15 +36,16 @@ class TelegramNotifier:
         icon = icon_map.get(signal_type, "⚠️")
         sign = "+" if change_pct >= 0 else ""
         now = datetime.now().strftime("%Y-%m-%d %H:%M")
+        display = f"{name} ({ticker})" if name else ticker
 
         text = (
-            f"{icon} <b>[매도 시그널] {ticker}</b>\n"
+            f"{icon} <b>[매도 시그널] {display}</b>\n"
             f"━━━━━━━━━━━━━━━━━━\n"
             f"📌 시그널: {signal_type}\n"
             f"📋 내용: {message}\n"
             f"━━━━━━━━━━━━━━━━━━\n"
-            f"💰 매수가: {buy_price:,.0f}\n"
-            f"💹 현재가: {current_price:,.0f} ({sign}{change_pct:.2f}%)\n"
+            f"💰 매수가: {buy_price:,.2f}\n"
+            f"💹 현재가: {current_price:,.2f} ({sign}{change_pct:.2f}%)\n"
             f"🕐 시각: {now}"
         )
         return self.send_message(text)
@@ -51,8 +53,10 @@ class TelegramNotifier:
     def send_startup_message(self, watchlist: list[dict]):
         lines = [f"<b>📡 주식 매도 알림 시작</b>", "━━━━━━━━━━━━━━━━━━", "모니터링 종목:"]
         for item in watchlist:
+            name = item.get("name", "")
+            display = f"{name} ({item['ticker']})" if name else item['ticker']
             lines.append(
-                f"  • {item['ticker']} | 매수가: {item['buy_price']:,.0f}"
+                f"  • {display} | 매수가: {item['buy_price']:,.2f}"
                 + (f" | 손절: -{item['stop_loss_pct']}%" if 'stop_loss_pct' in item else "")
                 + (f" | 목표: +{item['take_profit_pct']}%" if 'take_profit_pct' in item else "")
             )

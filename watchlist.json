@@ -1,16 +1,183 @@
 [
   {
     "ticker": "005930.KS",
-    "buy_price": 70000,
+    "name": "삼성전자",
+    "buy_price": 0,
+    "fetch_current": true,
     "stop_loss_pct": 5.0,
     "take_profit_pct": 20.0,
     "rsi_overbought": 70.0
   },
   {
-    "ticker": "AAPL",
-    "buy_price": 180.0,
-    "stop_loss_pct": 7.0,
-    "take_profit_pct": 15.0,
+    "ticker": "000660.KS",
+    "name": "SK하이닉스",
+    "buy_price": 0,
+    "fetch_current": true,
+    "stop_loss_pct": 5.0,
+    "take_profit_pct": 20.0,
+    "rsi_overbought": 70.0
+  },
+  {
+    "ticker": "017670.KS",
+    "name": "SK텔레콤",
+    "buy_price": 62000,
+    "stop_loss_pct": 5.0,
+    "take_profit_pct": 20.0,
+    "rsi_overbought": 70.0
+  },
+  {
+    "ticker": "034220.KS",
+    "name": "LG디스플레이",
+    "buy_price": 15000,
+    "stop_loss_pct": 5.0,
+    "take_profit_pct": 20.0,
+    "rsi_overbought": 70.0
+  },
+  {
+    "ticker": "099190.KQ",
+    "name": "아이센스",
+    "buy_price": 26000,
+    "stop_loss_pct": 5.0,
+    "take_profit_pct": 20.0,
+    "rsi_overbought": 70.0
+  },
+  {
+    "ticker": "315640.KQ",
+    "name": "딥노이드",
+    "buy_price": 10000,
+    "stop_loss_pct": 5.0,
+    "take_profit_pct": 20.0,
+    "rsi_overbought": 70.0
+  },
+  {
+    "ticker": "PYPL",
+    "name": "PayPal Holdings Inc.",
+    "buy_price": 60.0,
+    "stop_loss_pct": 5.0,
+    "take_profit_pct": 20.0,
+    "rsi_overbought": 70.0
+  },
+  {
+    "ticker": "PFE",
+    "name": "Pfizer Inc.",
+    "buy_price": 26.0,
+    "stop_loss_pct": 5.0,
+    "take_profit_pct": 20.0,
+    "rsi_overbought": 70.0
+  },
+  {
+    "ticker": "NVDA",
+    "name": "NVIDIA Corporation",
+    "buy_price": 0,
+    "fetch_current": true,
+    "stop_loss_pct": 5.0,
+    "take_profit_pct": 20.0,
+    "rsi_overbought": 70.0
+  },
+  {
+    "ticker": "LITE",
+    "name": "Lumentum Holdings Inc.",
+    "buy_price": 0,
+    "fetch_current": true,
+    "stop_loss_pct": 5.0,
+    "take_profit_pct": 20.0,
+    "rsi_overbought": 70.0
+  },
+  {
+    "ticker": "TSLA",
+    "name": "Tesla Inc.",
+    "buy_price": 0,
+    "fetch_current": true,
+    "stop_loss_pct": 5.0,
+    "take_profit_pct": 20.0,
+    "rsi_overbought": 70.0
+  },
+  {
+    "ticker": "META",
+    "name": "Meta Platforms Inc.",
+    "buy_price": 0,
+    "fetch_current": true,
+    "stop_loss_pct": 5.0,
+    "take_profit_pct": 20.0,
+    "rsi_overbought": 70.0
+  },
+  {
+    "ticker": "GOOGL",
+    "name": "Alphabet Inc. Class A",
+    "buy_price": 0,
+    "fetch_current": true,
+    "stop_loss_pct": 5.0,
+    "take_profit_pct": 20.0,
+    "rsi_overbought": 70.0
+  },
+  {
+    "ticker": "AMZN",
+    "name": "Amazon.com Inc.",
+    "buy_price": 0,
+    "fetch_current": true,
+    "stop_loss_pct": 5.0,
+    "take_profit_pct": 20.0,
+    "rsi_overbought": 70.0
+  },
+  {
+    "ticker": "MSFT",
+    "name": "Microsoft Corporation",
+    "buy_price": 0,
+    "fetch_current": true,
+    "stop_loss_pct": 5.0,
+    "take_profit_pct": 20.0,
+    "rsi_overbought": 70.0
+  },
+  {
+    "ticker": "IBM",
+    "name": "International Business Machines",
+    "buy_price": 0,
+    "fetch_current": true,
+    "stop_loss_pct": 5.0,
+    "take_profit_pct": 20.0,
+    "rsi_overbought": 70.0
+  },
+  {
+    "ticker": "AMD",
+    "name": "Advanced Micro Devices Inc.",
+    "buy_price": 0,
+    "fetch_current": true,
+    "stop_loss_pct": 5.0,
+    "take_profit_pct": 20.0,
+    "rsi_overbought": 70.0
+  },
+  {
+    "ticker": "INTC",
+    "name": "Intel Corporation",
+    "buy_price": 0,
+    "fetch_current": true,
+    "stop_loss_pct": 5.0,
+    "take_profit_pct": 20.0,
+    "rsi_overbought": 70.0
+  },
+  {
+    "ticker": "SLV",
+    "name": "iShares Silver Trust",
+    "buy_price": 75.0,
+    "stop_loss_pct": 5.0,
+    "take_profit_pct": 20.0,
+    "rsi_overbought": 70.0
+  },
+  {
+    "ticker": "GLD",
+    "name": "SPDR Gold Shares",
+    "buy_price": 0,
+    "fetch_current": true,
+    "stop_loss_pct": 5.0,
+    "take_profit_pct": 20.0,
+    "rsi_overbought": 70.0
+  },
+  {
+    "ticker": "CRCL",
+    "name": "Circle Internet Group, Inc.",
+    "buy_price": 60.0,
+    "stop_loss_pct": 5.0,
+    "take_profit_pct": 20.0,
     "rsi_overbought": 70.0
   }
 ]
