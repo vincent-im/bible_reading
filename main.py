@@ -129,6 +129,18 @@ def main():
         print("  예시: python main.py --interactive")
         sys.exit(1)
 
+    # 매수가가 설정되지 않은 종목 필터링
+    active = [item for item in watchlist if item.get("buy_price", 0) > 0]
+    skipped = len(watchlist) - len(active)
+    if skipped:
+        names = [item.get("name", item["ticker"]) for item in watchlist if item.get("buy_price", 0) == 0]
+        print(f"[경고] 매수가 미설정 {skipped}개 종목 건너뜀: {', '.join(names)}")
+        print("  → GitHub Actions의 'Initialize Watchlist Prices' 워크플로우를 먼저 실행하세요.")
+    if not active:
+        print("[오류] 모니터링할 종목이 없습니다.")
+        sys.exit(1)
+    watchlist = active
+
     monitor = StockMonitor(notifier, check_interval_minutes=interval)
 
     if args.once:
