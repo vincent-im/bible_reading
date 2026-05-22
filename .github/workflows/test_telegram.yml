@@ -7,7 +7,42 @@ on:
     paths: ['.github/workflows/test_telegram.yml']
 
 jobs:
-  test-etf-names:
+  test-stock-realtime:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+      - name: Test real-time price (Korean + US stocks)
+        run: |
+          python -c "
+          from stock_alert.fetcher import get_current_price, _get_naver_realtime_price
+
+          tickers_kr = [('005930', '삼성전자'), ('017670', 'SK텔레콤'), ('034220', 'LG디스플레이')]
+          tickers_us = ['PYPL', 'PFE', 'SLV']
+
+          print('=== 한국 주식 실시간 가격 ===')
+          for code, name in tickers_kr:
+              price = _get_naver_realtime_price(code)
+              full = get_current_price(code + '.KS')
+              print(f'{name}({code}): Naver={price}, get_current_price={full:,.0f}')
+
+          print()
+          print('=== 미국 주식 실시간 가격 ===')
+          for t in tickers_us:
+              price = get_current_price(t)
+              print(f'{t}: {price:.4f}')
+          "
+      - name: Run stock monitor once (sell signal check)
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: python main.py --once
+
+  test-etf-daily:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -22,4 +57,4 @@ jobs:
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
           ETF_MODE: daily
         run: python etf_alert.py
-# trigger-3
+# trigger-4
