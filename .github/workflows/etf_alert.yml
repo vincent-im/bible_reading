@@ -1,0 +1,27 @@
+name: ETF Top 20 Alert
+
+on:
+  schedule:
+    - cron: '0 0-6 * * 1-5'   # 09:00~15:00 KST (UTC+9), 월~금
+    - cron: '30 6 * * 1-5'    # 15:30 KST (장 마감)
+  workflow_dispatch:            # 수동 실행
+
+jobs:
+  etf-alert:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Send ETF top 20
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: python etf_alert.py
