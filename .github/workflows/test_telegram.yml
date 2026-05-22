@@ -16,14 +16,15 @@ jobs:
           python-version: '3.11'
       - name: Install dependencies
         run: pip install -r requirements.txt
-      - name: ETF data diagnostics
+      - name: ETF data source diagnostics
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
         run: |
           python3 - <<'PYEOF'
-          import os, requests, sys, traceback
+          import os, requests, traceback
           from datetime import datetime, timedelta
+          from pykrx import stock
 
           token = os.environ["TELEGRAM_BOT_TOKEN"]
           chat_id = os.environ["TELEGRAM_CHAT_ID"]
@@ -35,81 +36,77 @@ jobs:
                   timeout=10
               )
 
-          from pykrx import stock
-
-          def last_weekday(dt):
-              while dt.weekday() >= 5:
-                  dt -= timedelta(days=1)
-              return dt
-
-          def recent_trading_days(n):
-              days, dt = [], datetime.now()
-              while len(days) < n:
-                  if dt.weekday() < 5:
-                      days.append(dt.strftime("%Y%m%d"))
-                  dt -= timedelta(days=1)
-              return days
-
           now = datetime.now()
+          now_kst = now + timedelta(hours=9)
 
-          # ─── 당일 날짜 ───
-          td = recent_trading_days(2)
-          today_str, prev_str = td[0], td[1]
+          # 1) 최근 7일간 날짜별 ETF 데이터 존재 여부 확인
+          lines = [
+              "<b>🔍 pykrx ETF 데이터 소스 진단</b>",
+              f"🕒 실행 시각: {now_kst.strftime('%Y-%m-%d %H:%M')} KST",
+              "━" * 18,
+              "\n<b>[1] 날짜별 ETF 데이터 확인 (최근 7일)</b>",
+          ]
 
-          # ─── 주간 날짜 ───
-          days_since_fri = (now.weekday() - 4) % 7
-          this_fri = last_weekday(now - timedelta(days=days_since_fri))
-          last_fri = last_weekday(this_fri - timedelta(days=7))
-          this_fri_str = this_fri.strftime("%Y%m%d")
-          last_fri_str = last_fri.strftime("%Y%m%d")
-
-          # ─── 월간 날짜 ───
-          first_this = now.replace(day=1)
-          last_prev = first_this - timedelta(days=1)
-          first_prev = last_prev.replace(day=1)
-          last_prev_prev = first_prev - timedelta(days=1)
-          end_dt = last_weekday(last_prev)
-          start_dt = last_weekday(last_prev_prev)
-          end_str = end_dt.strftime("%Y%m%d")
-          start_str = start_dt.strftime("%Y%m%d")
-
-          # ─── 데이터 조회 ───
-          results = {}
-          for label, d1, d2 in [
-              ("당일",  today_str,    prev_str),
-              ("주간",  this_fri_str, last_fri_str),
-              ("월간",  end_str,      start_str),
-          ]:
+          dt = now
+          found_dates = []
+          for _ in range(7):
+              d = dt.strftime("%Y%m%d")
               try:
-                  df1 = stock.get_etf_ohlcv_by_ticker(d1)
-                  df2 = stock.get_etf_ohlcv_by_ticker(d2)
-                  results[label] = (d1, d2, len(df1), len(df2), df1, df2)
+                  df = stock.get_etf_ohlcv_by_ticker(d)
+                  n = len(df)
+                  icon = "✅" if n > 0 else "❌"
+                  label = "(주말)" if dt.weekday() >= 5 else "(평일)"
+                  lines.append(f"  {icon} {d} {label}: {n}개 종목")
+                  if n > 0:
+                      found_dates.append((d, df))
               except Exception as e:
-                  results[label] = (d1, d2, -1, -1, None, None)
+                  lines.append(f"  ⚠️ {d}: 오류 - {e}")
+              dt -= timedelta(days=1)
 
-          # ─── 진단 메시지 ───
-          lines = ["<b>🔍 ETF 데이터 수신 진단</b>", "━━━━━━━━━━━━━━━━━━"]
-          for label, (d1, d2, n1, n2, df1, df2) in results.items():
-              ok = n1 > 0 and n2 > 0
-              icon = "✅" if ok else "⚠️"
-              lines.append(f"{icon} <b>{label}</b>")
-              lines.append(f"  기준: {d1} / 비교: {d2}")
-              lines.append(f"  종목수: {n1}개 / {n2}개")
-              if ok:
-                  # 수익률 상위 3개 샘플
-                  common = df1.index.intersection(df2.index)
-                  c1 = df1.loc[common, '종가']
-                  c2 = df2.loc[common, '종가']
-                  valid = c2[c2 > 0]
-                  common = valid.index.intersection(c1.index)
-                  rets = (c1[common] - valid[common]) / valid[common] * 100
-                  top3 = rets.sort_values(ascending=False).head(3)
-                  sample = ", ".join(f"{v:+.1f}%" for v in top3.values)
-                  lines.append(f"  상위3 수익률: {sample}")
-              lines.append("")
+          # 2) 가장 최근 데이터에서 상위 3개 종목 샘플
+          if found_dates:
+              latest_date, latest_df = found_dates[0]
+              lines.append(f"\n<b>[2] 가장 최근 데이터: {latest_date}</b>")
+              try:
+                  # 종가 기준 상위 3개 종목 (수익률 아닌 절대가)
+                  top3 = latest_df.sort_values('종가', ascending=False).head(3)
+                  for ticker in top3.index:
+                      try:
+                          name = stock.get_etf_ticker_name(ticker)
+                      except:
+                          name = ticker
+                      close = int(top3.loc[ticker, '종가'])
+                      vol = int(top3.loc[ticker, '거래량'])
+                      lines.append(f"  • {name[:14]} | 종가: {close:,}원 | 거래량: {vol:,}")
+              except Exception as e:
+                  lines.append(f"  샘플 조회 실패: {e}")
 
-          lines.append("━━━━━━━━━━━━━━━━━━")
-          lines.append(f"조회시각: {now.strftime('%Y-%m-%d %H:%M')} UTC")
+              # 3) 두 번째 날짜와 수익률 계산 가능한지 확인
+              if len(found_dates) >= 2:
+                  prev_date, prev_df = found_dates[1]
+                  lines.append(f"\n<b>[3] 수익률 계산 가능한지 ({prev_date} → {latest_date})</b>")
+                  try:
+                      common = latest_df.index.intersection(prev_df.index)
+                      c1 = latest_df.loc[common, '종가']
+                      c2 = prev_df.loc[common, '종가']
+                      valid = c2[c2 > 0]
+                      common = valid.index.intersection(c1.index)
+                      rets = (c1[common] - valid[common]) / valid[common] * 100
+                      top5 = rets.sort_values(ascending=False).head(5)
+                      for ticker, ret in top5.items():
+                          try:
+                              name = stock.get_etf_ticker_name(ticker)
+                          except:
+                              name = ticker
+                          sign = "+" if ret >= 0 else ""
+                          lines.append(f"  {name[:14]}: {sign}{ret:.2f}%")
+                      lines.append(f"  (계산 대상 {len(common)}개 종목)")
+                  except Exception as e:
+                      lines.append(f"  수익률 계산 실패: {e}")
+          else:
+              lines.append("\n❌ 최근 7일 중 데이터 없음")
+
+          lines.append("\n" + "━" * 18)
           send("\n".join(lines))
           print("진단 완료")
           PYEOF
