@@ -1,11 +1,7 @@
 #!/usr/bin/env python3
-"""
-국내 ETF 당일 수익률 상위 20개를 텔레그램으로 전송합니다.
-GitHub Actions에서 매 1시간마다 자동 실행됩니다.
-"""
-
 import os
 import sys
+import traceback
 from dotenv import load_dotenv
 from stock_alert.etf_monitor import fetch_etf_top20
 from stock_alert.telegram_notifier import TelegramNotifier
@@ -18,7 +14,7 @@ def main():
     chat_id = os.getenv("TELEGRAM_CHAT_ID", "")
 
     if not bot_token or not chat_id:
-        print("[오류] TELEGRAM_BOT_TOKEN 또는 TELEGRAM_CHAT_ID가 설정되지 않았습니다.")
+        print("[오류] Telegram 환경변수 미설정")
         sys.exit(1)
 
     notifier = TelegramNotifier(bot_token, chat_id)
@@ -27,11 +23,15 @@ def main():
     try:
         top20, date_label = fetch_etf_top20()
     except Exception as e:
-        print(f"[오류] ETF 데이터 조회 실패: {e}")
+        err = traceback.format_exc()
+        print(f"[오류]\n{err}")
+        notifier.send_message(f"❌ ETF 조회 오류\n<code>{str(e)[:300]}</code>")
         sys.exit(1)
 
     if top20 is None or top20.empty:
-        print("데이터 없음 — 휴장일이거나 아직 장이 시작되지 않았습니다.")
+        msg = "⚠️ ETF 데이터 없음\n휴장일이거나 아직 장이 시작되지 않았습니다."
+        print(msg)
+        notifier.send_message(msg)
         sys.exit(0)
 
     print(f"상위 {len(top20)}개 종목 조회 완료. 텔레그램 전송 중...")
@@ -39,7 +39,7 @@ def main():
     if sent:
         print("전송 완료.")
     else:
-        print("[오류] 텔레그램 전송 실패.")
+        print("[오류] 텔레그램 전송 실패")
         sys.exit(1)
 
 
