@@ -74,12 +74,12 @@ class TelegramNotifier:
         rows = []
         for i, (ticker, row) in enumerate(df.iterrows(), 1):
             name = str(row.get('name', ticker))
-            if len(name) > 16:
-                name = name[:15] + "…"
+            if len(name) > 12:
+                name = name[:11] + "…"
             ret = row['return']
             close = int(row['close'])
             sign = "+" if ret >= 0 else ""
-            rows.append(f"{i:2d}위  {name:<16}  {sign}{ret:.2f}%  {close:,}원")
+            rows.append(f"{i:2d}위  {name}({ticker})  {sign}{ret:.2f}%  {close:,}원")
         return rows
 
     def send_etf_report(self, df: "pd.DataFrame", date_label: str) -> bool:
