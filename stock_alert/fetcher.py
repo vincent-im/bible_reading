@@ -3,7 +3,20 @@ import pandas as pd
 from datetime import datetime, timedelta
 
 
-def fetch_ohlcv(ticker: str, period_days: int = 60) -> pd.DataFrame:
+def fetch_fundamentals(ticker: str) -> dict:
+    """yfinance에서 기본적 분석 지표(P/E, PEG 등)를 가져옵니다. 실패 시 빈 dict 반환."""
+    try:
+        info = yf.Ticker(ticker).info
+        return {
+            "trailingPE":  info.get("trailingPE"),
+            "pegRatio":    info.get("pegRatio"),
+            "priceToBook": info.get("priceToBook"),
+        }
+    except Exception:
+        return {}
+
+
+def fetch_ohlcv(ticker: str, period_days: int = 300) -> pd.DataFrame:
     """
     yfinance로 OHLCV 데이터를 가져옵니다.
     한국 주식은 ticker 뒤에 .KS (코스피) 또는 .KQ (코스닥)를 붙입니다.

@@ -27,11 +27,16 @@ class TelegramNotifier:
                         current_price: float, buy_price: float, change_pct: float,
                         daily_change_pct: float = 0.0, name: str = ""):
         icon_map = {
-            "STOP_LOSS":        "🔴",
-            "TAKE_PROFIT":      "🟢",
-            "RSI_OVERBOUGHT":   "🟡",
-            "MACD_DEATH_CROSS": "🟠",
-            "BELOW_MA20":       "🟠",
+            "STOP_LOSS":          "🔴",
+            "TAKE_PROFIT":        "🟢",
+            "RSI_OVERBOUGHT":     "🟡",  # Templeton
+            "MACD_DEATH_CROSS":   "🟠",
+            "BELOW_MA20":         "🟠",
+            "BELOW_MA50":         "🔶",  # O'Neil / Lynch
+            "DEATH_CROSS_50_200": "⛔",  # 장기 데드크로스
+            "DISTRIBUTION_DAY":   "🔻",  # O'Neil 기관 매도
+            "GRAHAM_PE":          "📊",  # Benjamin Graham
+            "LYNCH_PEG":          "📈",  # Peter Lynch
         }
         icon = icon_map.get(signal_type, "⚠️")
         sign = "+" if change_pct >= 0 else ""
