@@ -55,7 +55,7 @@ def _calc_etf_returns(df_end: pd.DataFrame, df_start: pd.DataFrame, top_n: int) 
 
 
 def _fetch_etf_top20_naver(top_n: int = 20) -> tuple["pd.DataFrame | None", str]:
-    """네이버금융 API로 장중 실시간 ETF 수익률 상위 top_n 반환"""
+    """네이버금융 API로 장중 실시간 ETF 수익률 상위 top_n 반환 (명칭은 pykrx 조회)"""
     try:
         resp = requests.get(_NAVER_ETF_URL, headers=_NAVER_HEADERS, timeout=10)
         resp.raise_for_status()
@@ -77,7 +77,6 @@ def _fetch_etf_top20_naver(top_n: int = 20) -> tuple["pd.DataFrame | None", str]
                 continue
             records.append({
                 'ticker': str(item['itemcode']),
-                'name': str(item.get('etfItemName', item['itemcode'])),
                 'close': now_val,
                 'return': change_rate,
                 'volume': int(item.get('quant', 0) or 0),
@@ -90,6 +89,16 @@ def _fetch_etf_top20_naver(top_n: int = 20) -> tuple["pd.DataFrame | None", str]
 
     df = pd.DataFrame(records).set_index('ticker')
     top = df.sort_values('return', ascending=False).head(top_n).copy()
+
+    # pykrx로 공식 KRX ETF 명칭 조회 (상위 top_n개만)
+    names = {}
+    for ticker in top.index:
+        try:
+            names[ticker] = stock.get_etf_ticker_name(ticker)
+        except Exception:
+            names[ticker] = ticker
+    top['name'] = pd.Series(names)
+
     date_label = datetime.now().strftime("%Y-%m-%d")
     print(f"[Naver ETF] {len(records)}개 ETF 수신, 상위 {len(top)}개 추출")
     return top, date_label
