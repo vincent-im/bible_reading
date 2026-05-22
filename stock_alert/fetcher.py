@@ -3,18 +3,23 @@ import pandas as pd
 import requests
 from datetime import datetime, timedelta
 
-_NAVER_STOCK_URL = "https://m.stock.naver.com/api/stock/{code}/basic"
-_NAVER_HEADERS = {"User-Agent": "Mozilla/5.0 (compatible; StockBot/1.0)"}
+_NAVER_MOBILE_URL = "https://m.stock.naver.com/api/stock/{code}/basic"
+_NAVER_POLLING_URL = "https://polling.finance.naver.com/api/realtime/domestic/stock/{code}"
+_NAVER_HEADERS = {
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+    "Referer": "https://finance.naver.com/",
+    "Accept": "application/json",
+}
 
 
 def _get_naver_realtime_price(code: str) -> "float | None":
-    """네이버금융 모바일 API로 한국 주식 실시간 현재가 조회"""
+    """네이버금융 API로 한국 주식 실시간 현재가 조회 (모바일 → 폴링 순 시도)"""
+    # 1차: 모바일 API
     try:
-        url = _NAVER_STOCK_URL.format(code=code)
+        url = _NAVER_MOBILE_URL.format(code=code)
         resp = requests.get(url, headers=_NAVER_HEADERS, timeout=5)
         resp.raise_for_status()
         data = resp.json()
-        # currentPrice 필드 (장중) 또는 closePrice (장후) 사용
         for field in ("currentPrice", "closePrice"):
             val = data.get(field)
             if val:
@@ -22,7 +27,25 @@ def _get_naver_realtime_price(code: str) -> "float | None":
                 if price > 0:
                     return price
     except Exception as e:
-        print(f"[Naver 실시간] {code} 조회 실패: {e}")
+        print(f"[Naver 모바일] {code} 실패: {e}")
+
+    # 2차: polling API
+    try:
+        url = _NAVER_POLLING_URL.format(code=code)
+        resp = requests.get(url, headers=_NAVER_HEADERS, timeout=5)
+        resp.raise_for_status()
+        data = resp.json()
+        # {"datas": {"005930": {"closePrice": "71000", ...}}}
+        stock_data = data.get("datas", {}).get(code, {})
+        for field in ("closePrice", "currentPrice"):
+            val = stock_data.get(field)
+            if val:
+                price = float(str(val).replace(",", ""))
+                if price > 0:
+                    return price
+    except Exception as e:
+        print(f"[Naver 폴링] {code} 실패: {e}")
+
     return None
 
 
