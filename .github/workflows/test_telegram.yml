@@ -7,7 +7,7 @@ on:
     paths: ['.github/workflows/test_telegram.yml']
 
 jobs:
-  diagnose-etf-name:
+  test-etf-names:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -16,74 +16,10 @@ jobs:
           python-version: '3.11'
       - name: Install dependencies
         run: pip install -r requirements.txt
-      - name: Diagnose ETF name lookup
+      - name: Send daily ETF report
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-        run: |
-          python3 - <<'PYEOF'
-          import os, requests, traceback
-          from pykrx import stock
-
-          token = os.environ["TELEGRAM_BOT_TOKEN"]
-          chat_id = os.environ["TELEGRAM_CHAT_ID"]
-
-          def send(text):
-              requests.post(
-                  f"https://api.telegram.org/bot{token}/sendMessage",
-                  json={"chat_id": chat_id, "parse_mode": "HTML", "text": text},
-                  timeout=10
-              )
-
-          lines = ["<b>\U0001f50d ETF 명칭 조회 진단</b>", "━" * 18]
-
-          # 1) pykrx get_etf_ticker_name() 직접 테스트
-          test_codes = ["069500", "122630", "114800", "kodex"]
-          lines.append("<b>[1] pykrx get_etf_ticker_name() 반환값</b>")
-          for code in test_codes:
-              try:
-                  name = stock.get_etf_ticker_name(code)
-                  lines.append(f"  {code} -> {repr(name)} (type: {type(name).__name__})")
-              except Exception as e:
-                  lines.append(f"  {code} -> 오류: {e}")
-
-          # 2) pykrx ETF 전체 리스트 확인
-          lines.append("\n<b>[2] pykrx ETF 티커 리스트 (첫 5개)</b>")
-          try:
-              from datetime import datetime, timedelta
-              today = datetime.now().strftime("%Y%m%d")
-              tickers = stock.get_etf_ticker_list(today)
-              lines.append(f"  전체 ETF 수: {len(tickers)}개")
-              for t in tickers[:5]:
-                  try:
-                      n = stock.get_etf_ticker_name(t)
-                      lines.append(f"  {t}: {n}")
-                  except Exception as e:
-                      lines.append(f"  {t}: 오류 {e}")
-          except Exception as e:
-              lines.append(f"  오류: {e}")
-
-          # 3) 네이버 API 실제 응답 필드 확인
-          lines.append("\n<b>[3] 네이버 API 응답 첫 항목 필드</b>")
-          try:
-              resp = requests.get(
-                  "https://finance.naver.com/api/sise/etfItemList.naver",
-                  headers={"User-Agent": "Mozilla/5.0"},
-                  timeout=10
-              )
-              items = resp.json().get("result", {}).get("etfItemList", [])
-              if items:
-                  first = items[0]
-                  lines.append(f"  전체 필드: {list(first.keys())}")
-                  # 이름 관련 필드 확인
-                  for k, v in first.items():
-                      if any(x in k.lower() for x in ['name', 'nm', '명']):
-                          lines.append(f"  → {k}: {v}")
-              else:
-                  lines.append("  항목 없음")
-          except Exception as e:
-              lines.append(f"  오류: {traceback.format_exc()[:300]}")
-
-          send("\n".join(lines))
-          print("전송 완료")
-          PYEOF
+          ETF_MODE: daily
+        run: python etf_alert.py
+# trigger-3

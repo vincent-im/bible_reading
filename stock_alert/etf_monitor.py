@@ -6,6 +6,41 @@ import pandas as pd
 _NAVER_ETF_URL = "https://finance.naver.com/api/sise/etfItemList.naver"
 _NAVER_HEADERS = {"User-Agent": "Mozilla/5.0 (compatible; ETFBot/1.0)"}
 
+_etf_name_cache: dict[str, str] = {}
+
+
+def _build_etf_name_map() -> dict[str, str]:
+    """FinanceDataReader로 KRX 공식 ETF 명칭 사전을 구축합니다."""
+    global _etf_name_cache
+    if _etf_name_cache:
+        return _etf_name_cache
+    try:
+        import FinanceDataReader as fdr
+        df = fdr.StockListing('ETF/KR')
+        code_col = next((c for c in df.columns if c.lower() in ('code', 'symbol')), None)
+        name_col = next((c for c in df.columns if c.lower() == 'name'), None)
+        if code_col and name_col:
+            _etf_name_cache = dict(zip(df[code_col].astype(str), df[name_col].astype(str)))
+            print(f"[ETF 명칭] FinanceDataReader에서 {len(_etf_name_cache)}개 로드 완료")
+            return _etf_name_cache
+    except Exception as e:
+        print(f"[ETF 명칭] FinanceDataReader 실패: {e}")
+    return {}
+
+
+def _get_etf_name(ticker: str) -> str:
+    """ETF 티커 코드로 공식 명칭 반환. 없으면 pykrx 시도, 그래도 없으면 코드 반환."""
+    name_map = _build_etf_name_map()
+    if ticker in name_map and name_map[ticker] != ticker:
+        return name_map[ticker]
+    try:
+        name = stock.get_etf_ticker_name(ticker)
+        if name and name != ticker:
+            return name
+    except Exception:
+        pass
+    return ticker
+
 
 def _get_recent_trading_days(n: int = 2) -> list[str]:
     days = []
@@ -41,18 +76,11 @@ def _calc_etf_returns(df_end: pd.DataFrame, df_start: pd.DataFrame, top_n: int) 
     })
 
     top = result.sort_values('return', ascending=False).head(top_n).copy()
-    names = {}
-    for ticker in top.index:
-        try:
-            names[ticker] = stock.get_etf_ticker_name(ticker)
-        except Exception:
-            names[ticker] = ticker
-    top['name'] = pd.Series(names)
+    top['name'] = pd.Series({t: _get_etf_name(t) for t in top.index})
     return top
 
 
 def _fetch_etf_top20_naver(top_n: int = 20) -> tuple["pd.DataFrame | None", str]:
-    """네이버금융 API로 장중 실시간 ETF 수익률 상위 top_n 반환 (명칭은 pykrx 조회)"""
     try:
         resp = requests.get(_NAVER_ETF_URL, headers=_NAVER_HEADERS, timeout=10)
         resp.raise_for_status()
@@ -86,15 +114,7 @@ def _fetch_etf_top20_naver(top_n: int = 20) -> tuple["pd.DataFrame | None", str]
 
     df = pd.DataFrame(records).set_index('ticker')
     top = df.sort_values('return', ascending=False).head(top_n).copy()
-
-    # pykrx로 공식 KRX ETF 명칭 조회 (상위 top_n개만)
-    names = {}
-    for ticker in top.index:
-        try:
-            names[ticker] = stock.get_etf_ticker_name(ticker)
-        except Exception:
-            names[ticker] = ticker
-    top['name'] = pd.Series(names)
+    top['name'] = pd.Series({t: _get_etf_name(t) for t in top.index})
 
     date_label = datetime.now().strftime("%Y-%m-%d")
     print(f"[Naver ETF] {len(records)}개 ETF 수신, 상위 {len(top)}개 추출")
@@ -118,14 +138,9 @@ def _fetch_etf_top20_pykrx(top_n: int = 20) -> tuple["pd.DataFrame | None", str]
 
 
 def fetch_etf_top20(top_n: int = 20) -> tuple["pd.DataFrame | None", str]:
-    """
-    국내 ETF 당일 수익률 상위 top_n 반환.
-    네이버금융(실시간) -> pykrx(EOD) 순으로 시도.
-    """
     top, date_label = _fetch_etf_top20_naver(top_n)
     if top is not None and not top.empty:
         return top, date_label
-
     print("[Naver ETF] 실패, pykrx 폴백 시도")
     return _fetch_etf_top20_pykrx(top_n)
 
