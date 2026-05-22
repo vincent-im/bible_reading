@@ -2,6 +2,9 @@ name: Test Telegram Connection
 
 on:
   workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/test_telegram.yml']
 
 jobs:
   test:
@@ -17,17 +20,17 @@ jobs:
           token = os.environ.get("TELEGRAM_BOT_TOKEN", "")
           chat_id = os.environ.get("TELEGRAM_CHAT_ID", "")
           if not token or not chat_id:
-              print("❌ TELEGRAM_BOT_TOKEN 또는 TELEGRAM_CHAT_ID가 설정되지 않았습니다.")
+              print("TELEGRAM_BOT_TOKEN 또는 TELEGRAM_CHAT_ID가 설정되지 않았습니다.")
               sys.exit(1)
           resp = requests.post(
               f"https://api.telegram.org/bot{token}/sendMessage",
-              json={"chat_id": chat_id, "text": "✅ 테스트 성공!\n\n주식 매도 알림 봇이 정상 연결되었습니다.\n이제 10분마다 자동으로 시그널을 체크합니다."},
+              json={"chat_id": chat_id, "text": "✅ 테스트 메시지\n\n주식 매도 알림 봇이 정상 연결되었습니다.\n10분마다 자동으로 시그널을 체크합니다."},
               timeout=10
           )
           data = resp.json()
           if data.get("ok"):
-              print("✅ 텔레그램 전송 성공!")
+              print("텔레그램 전송 성공!")
           else:
-              print(f"❌ 전송 실패: {data}")
+              print(f"전송 실패: {data}")
               sys.exit(1)
           EOF
