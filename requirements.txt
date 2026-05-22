@@ -5,3 +5,4 @@ requests>=2.31.0
 python-dotenv>=1.0.0
 schedule>=1.2.0
 pykrx>=1.0.47
+finance-datareader>=0.9.50
