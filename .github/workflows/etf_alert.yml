@@ -2,12 +2,8 @@ name: ETF Top 20 Alert
 
 on:
   schedule:
-    - cron: '0 0-6 * * 1-5'   # 09:00~15:00 KST (UTC+9), 월~금
-    - cron: '30 6 * * 1-5'    # 15:30 KST (장 마감)
-  workflow_dispatch:            # 수동 실행
-  push:
-    branches: [main]
-    paths: ['.github/workflows/etf_alert.yml']
+    - cron: '30 6 * * 1-5'   # 15:30 KST (장 마감 직후), 월~금
+  workflow_dispatch:           # 수동 실행
 
 jobs:
   etf-alert:
@@ -29,4 +25,3 @@ jobs:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
         run: python etf_alert.py
-        # 오늘 데이터 없을 경우 자동으로 전일 데이터로 폴백
