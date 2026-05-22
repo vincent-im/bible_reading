@@ -1,7 +1,7 @@
 import time
 import json
 from datetime import datetime
-from .fetcher import fetch_ohlcv, resolve_korean_ticker
+from .fetcher import fetch_ohlcv, fetch_fundamentals, resolve_korean_ticker
 from .signals import check_sell_signals
 from .telegram_notifier import TelegramNotifier
 
@@ -10,7 +10,6 @@ class StockMonitor:
     def __init__(self, notifier: TelegramNotifier, check_interval_minutes: int = 5):
         self.notifier = notifier
         self.check_interval = check_interval_minutes * 60
-        # {ticker: set of signal_types already fired today}
         self._fired_today: dict[str, set] = {}
         self._last_reset_date: str = ""
 
@@ -43,12 +42,14 @@ class StockMonitor:
 
             try:
                 df = fetch_ohlcv(ticker)
+                fundamentals = fetch_fundamentals(ticker)
                 daily_change, signals = check_sell_signals(
                     df, buy_price,
                     stop_loss_pct=stop_loss_pct,
                     take_profit_pct=take_profit_pct,
                     rsi_overbought=rsi_overbought,
                     updown_threshold=updown_threshold,
+                    fundamentals=fundamentals,
                 )
 
                 price = float(df["Close"].iloc[-1])

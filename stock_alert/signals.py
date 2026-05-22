@@ -11,7 +11,7 @@ class SignalResult:
     message: str
     current_price: float
     change_pct: float
-    daily_change_pct: float = field(default=0.0)  # 당일 변동률 (1단계 값)
+    daily_change_pct: float = field(default=0.0)
 
 
 def calc_rsi(prices: pd.Series, period: int = 14) -> pd.Series:
@@ -33,10 +33,6 @@ def calc_macd(prices: pd.Series, fast=12, slow=26, signal=9):
 
 
 def check_updown_variables(df: pd.DataFrame, threshold: float = 5.0) -> Optional[float]:
-    """
-    1단계: 당일 변동률 확인.
-    전일 종가 대비 ±threshold% 이상이면 변동률을 반환, 미달이면 None 반환.
-    """
     close = df["Close"].squeeze()
     if len(close) < 2:
         return None
@@ -56,23 +52,20 @@ def _check_stage2(
     stop_loss_pct: float,
     take_profit_pct: float,
     rsi_overbought: float,
+    fundamentals: Optional[dict] = None,
 ) -> list[SignalResult]:
-    """
-    2단계: 기존 5개 매도 시그널 검사.
-    1단계(UPDOWN_VARIABLES)가 충족된 후에만 호출됩니다.
-    """
     close = df["Close"].squeeze()
     current_price = float(close.iloc[-1])
     change_pct = (current_price - buy_price) / buy_price * 100
 
     signals = []
 
-    # 1. 손절가 도달
+    # 1. 손절가 도달 [O'Neil: 7~8% 손절 권장 / 기본값 -10%]
     if change_pct <= -stop_loss_pct:
         signals.append(SignalResult(
             triggered=True,
             signal_type="STOP_LOSS",
-            message=f"손절가 도달: 매수가 {buy_price:,.0f} → 현재가 {current_price:,.0f} ({change_pct:+.2f}%)",
+            message=f"손절가 도달 (O'Neil: 7~8% 권장): 매수가 {buy_price:,.0f} → 현재가 {current_price:,.0f} ({change_pct:+.2f}%)",
             current_price=current_price,
             change_pct=change_pct,
         ))
@@ -90,7 +83,7 @@ def _check_stage2(
     if len(close) < 30:
         return signals
 
-    # 3. RSI 과매수 후 하락 전환
+    # 3. RSI 과매수 이탈 [Templeton: 과열 구간 이탈]
     rsi = calc_rsi(close)
     if len(rsi.dropna()) >= 2:
         rsi_prev = float(rsi.iloc[-2])
@@ -99,7 +92,7 @@ def _check_stage2(
             signals.append(SignalResult(
                 triggered=True,
                 signal_type="RSI_OVERBOUGHT",
-                message=f"RSI 과매수 이탈: RSI {rsi_prev:.1f} → {rsi_curr:.1f} (기준: {rsi_overbought})",
+                message=f"[Templeton] RSI 과매수 이탈: {rsi_prev:.1f} → {rsi_curr:.1f} (기준: {rsi_overbought})",
                 current_price=current_price,
                 change_pct=change_pct,
             ))
@@ -108,31 +101,95 @@ def _check_stage2(
     if len(close) >= 35:
         macd_line, signal_line = calc_macd(close)
         if len(macd_line.dropna()) >= 2:
-            macd_prev = float(macd_line.iloc[-2])
-            sig_prev = float(signal_line.iloc[-2])
-            macd_curr = float(macd_line.iloc[-1])
-            sig_curr = float(signal_line.iloc[-1])
-            if macd_prev >= sig_prev and macd_curr < sig_curr:
+            if (float(macd_line.iloc[-2]) >= float(signal_line.iloc[-2]) and
+                    float(macd_line.iloc[-1]) < float(signal_line.iloc[-1])):
                 signals.append(SignalResult(
                     triggered=True,
                     signal_type="MACD_DEATH_CROSS",
-                    message=f"MACD 데드크로스: MACD({macd_curr:.4f}) < 신호선({sig_curr:.4f})",
+                    message=f"MACD 데드크로스: MACD({float(macd_line.iloc[-1]):.4f}) < 신호선({float(signal_line.iloc[-1]):.4f})",
                     current_price=current_price,
                     change_pct=change_pct,
                 ))
 
-    # 5. 20일 이동평균선 하향 이탈
+    # 5. 20일 이동평균 하향 이탈
     ma20 = close.rolling(20).mean()
     if len(ma20.dropna()) >= 2:
-        ma_prev = float(ma20.iloc[-2])
-        ma_curr = float(ma20.iloc[-1])
-        close_prev = float(close.iloc[-2])
-        close_curr = float(close.iloc[-1])
-        if close_prev >= ma_prev and close_curr < ma_curr:
+        if (float(close.iloc[-2]) >= float(ma20.iloc[-2]) and
+                float(close.iloc[-1]) < float(ma20.iloc[-1])):
             signals.append(SignalResult(
                 triggered=True,
                 signal_type="BELOW_MA20",
-                message=f"20일 이동평균 하향 이탈: 현재가 {close_curr:,.0f} < MA20 {ma_curr:,.0f}",
+                message=f"20일 이동평균 하향 이탈: {current_price:,.0f} < MA20 {float(ma20.iloc[-1]):,.0f}",
+                current_price=current_price,
+                change_pct=change_pct,
+            ))
+
+    # 6. 50일 이동평균 하향 이탈 [O'Neil / Peter Lynch]
+    if len(close) >= 52:
+        ma50 = close.rolling(50).mean()
+        if len(ma50.dropna()) >= 2:
+            if (float(close.iloc[-2]) >= float(ma50.iloc[-2]) and
+                    float(close.iloc[-1]) < float(ma50.iloc[-1])):
+                signals.append(SignalResult(
+                    triggered=True,
+                    signal_type="BELOW_MA50",
+                    message=f"[O'Neil/Lynch] 50일 이동평균 하향 이탈: {current_price:,.0f} < MA50 {float(ma50.iloc[-1]):,.0f}",
+                    current_price=current_price,
+                    change_pct=change_pct,
+                ))
+
+    # 7. 장기 데드크로스 MA50 < MA200 [기관 투자자 기준]
+    if len(close) >= 202:
+        ma50 = close.rolling(50).mean()
+        ma200 = close.rolling(200).mean()
+        if (len(ma50.dropna()) >= 2 and len(ma200.dropna()) >= 2 and
+                float(ma50.iloc[-2]) >= float(ma200.iloc[-2]) and
+                float(ma50.iloc[-1]) < float(ma200.iloc[-1])):
+            signals.append(SignalResult(
+                triggered=True,
+                signal_type="DEATH_CROSS_50_200",
+                message=f"[기관 기준] 장기 데드크로스: MA50({float(ma50.iloc[-1]):,.0f}) < MA200({float(ma200.iloc[-1]):,.0f})",
+                current_price=current_price,
+                change_pct=change_pct,
+            ))
+
+    # 8. 거래량 급증 + 가격 하락 (Distribution Day) [O'Neil CANSLIM]
+    if "Volume" in df.columns and len(close) >= 52:
+        vol = df["Volume"].squeeze()
+        vol_ma50 = vol.rolling(50).mean()
+        if not pd.isna(vol_ma50.iloc[-1]):
+            vol_curr = float(vol.iloc[-1])
+            vol_avg = float(vol_ma50.iloc[-1])
+            price_chg = (float(close.iloc[-1]) - float(close.iloc[-2])) / float(close.iloc[-2]) * 100
+            if vol_avg > 0 and price_chg <= -1.0 and vol_curr >= vol_avg * 1.5:
+                signals.append(SignalResult(
+                    triggered=True,
+                    signal_type="DISTRIBUTION_DAY",
+                    message=f"[O'Neil] 기관 분산 매도 신호: 거래량 평균 대비 {vol_curr/vol_avg:.1f}배, 가격 {price_chg:.1f}%",
+                    current_price=current_price,
+                    change_pct=change_pct,
+                ))
+
+    # 9. Graham P/E 과대평가 [Benjamin Graham: P/E > 20]
+    if fundamentals:
+        pe = fundamentals.get("trailingPE")
+        if pe and isinstance(pe, (int, float)) and not np.isnan(pe) and pe > 20:
+            signals.append(SignalResult(
+                triggered=True,
+                signal_type="GRAHAM_PE",
+                message=f"[Graham] P/E 과대평가: {pe:.1f}배 > 20배 (방어적 투자자 안전 마진 초과)",
+                current_price=current_price,
+                change_pct=change_pct,
+            ))
+
+    # 10. Lynch PEG 과대평가 [Peter Lynch: PEG > 2.0]
+    if fundamentals:
+        peg = fundamentals.get("pegRatio")
+        if peg and isinstance(peg, (int, float)) and not np.isnan(peg) and peg > 2.0:
+            signals.append(SignalResult(
+                triggered=True,
+                signal_type="LYNCH_PEG",
+                message=f"[Lynch] PEG 과대평가: {peg:.2f} > 2.0 (성장률 대비 고평가 구간)",
                 current_price=current_price,
                 change_pct=change_pct,
             ))
@@ -147,26 +204,13 @@ def check_sell_signals(
     take_profit_pct: float = 100.0,
     rsi_overbought: float = 70.0,
     updown_threshold: float = 5.0,
+    fundamentals: Optional[dict] = None,
 ) -> tuple[Optional[float], list[SignalResult]]:
-    """
-    2단계 매도 시그널 체크.
-
-    1단계 (UPDOWN_VARIABLES):
-      전일 종가 대비 ±updown_threshold% 이상 변동 시 2단계로 진행.
-      미달이면 빈 리스트 반환.
-
-    2단계:
-      STOP_LOSS, TAKE_PROFIT, RSI_OVERBOUGHT, MACD_DEATH_CROSS, BELOW_MA20 검사.
-
-    반환값: (daily_change_pct | None, [SignalResult, ...])
-      - daily_change_pct: 1단계 당일 변동률 (None이면 1단계 미충족)
-      - signals: 2단계에서 발생한 시그널 목록
-    """
     daily_change = check_updown_variables(df, updown_threshold)
     if daily_change is None:
         return None, []
 
-    signals = _check_stage2(df, buy_price, stop_loss_pct, take_profit_pct, rsi_overbought)
+    signals = _check_stage2(df, buy_price, stop_loss_pct, take_profit_pct, rsi_overbought, fundamentals)
     for sig in signals:
         sig.daily_change_pct = daily_change
     return daily_change, signals
