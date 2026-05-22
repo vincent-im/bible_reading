@@ -24,7 +24,7 @@ jobs:
               sys.exit(1)
           resp = requests.post(
               f"https://api.telegram.org/bot{token}/sendMessage",
-              json={"chat_id": chat_id, "text": "✅ 테스트 메시지\n\n주식 매도 알림 봇이 정상 연결되었습니다.\n10분마다 자동으로 시그널을 체크합니다."},
+              json={"chat_id": chat_id, "text": "✅ 테스트 메시지 (2차)\n\n주식 매도 알림 봇 정상 작동 중입니다.\n손절 -10% / 목표 +100% 기준으로 9개 종목을 모니터링합니다."},
               timeout=10
           )
           data = resp.json()
