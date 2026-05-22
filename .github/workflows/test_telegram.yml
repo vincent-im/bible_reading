@@ -7,7 +7,7 @@ on:
     paths: ['.github/workflows/test_telegram.yml']
 
 jobs:
-  etf-data-check:
+  test-naver-daily:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -16,97 +16,41 @@ jobs:
           python-version: '3.11'
       - name: Install dependencies
         run: pip install -r requirements.txt
-      - name: ETF data source diagnostics
+      - name: Send daily ETF report (Naver source)
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-        run: |
-          python3 - <<'PYEOF'
-          import os, requests, traceback
-          from datetime import datetime, timedelta
-          from pykrx import stock
+          ETF_MODE: daily
+        run: python etf_alert.py
 
-          token = os.environ["TELEGRAM_BOT_TOKEN"]
-          chat_id = os.environ["TELEGRAM_CHAT_ID"]
+  test-weekly:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+      - name: Send weekly ETF report
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          ETF_MODE: weekly
+        run: python etf_alert.py
 
-          def send(text):
-              requests.post(
-                  f"https://api.telegram.org/bot{token}/sendMessage",
-                  json={"chat_id": chat_id, "parse_mode": "HTML", "text": text},
-                  timeout=10
-              )
-
-          now = datetime.now()
-          now_kst = now + timedelta(hours=9)
-
-          # 1) 최근 7일간 날짜별 ETF 데이터 존재 여부 확인
-          lines = [
-              "<b>🔍 pykrx ETF 데이터 소스 진단</b>",
-              f"🕒 실행 시각: {now_kst.strftime('%Y-%m-%d %H:%M')} KST",
-              "━" * 18,
-              "\n<b>[1] 날짜별 ETF 데이터 확인 (최근 7일)</b>",
-          ]
-
-          dt = now
-          found_dates = []
-          for _ in range(7):
-              d = dt.strftime("%Y%m%d")
-              try:
-                  df = stock.get_etf_ohlcv_by_ticker(d)
-                  n = len(df)
-                  icon = "✅" if n > 0 else "❌"
-                  label = "(주말)" if dt.weekday() >= 5 else "(평일)"
-                  lines.append(f"  {icon} {d} {label}: {n}개 종목")
-                  if n > 0:
-                      found_dates.append((d, df))
-              except Exception as e:
-                  lines.append(f"  ⚠️ {d}: 오류 - {e}")
-              dt -= timedelta(days=1)
-
-          # 2) 가장 최근 데이터에서 상위 3개 종목 샘플
-          if found_dates:
-              latest_date, latest_df = found_dates[0]
-              lines.append(f"\n<b>[2] 가장 최근 데이터: {latest_date}</b>")
-              try:
-                  # 종가 기준 상위 3개 종목 (수익률 아닌 절대가)
-                  top3 = latest_df.sort_values('종가', ascending=False).head(3)
-                  for ticker in top3.index:
-                      try:
-                          name = stock.get_etf_ticker_name(ticker)
-                      except:
-                          name = ticker
-                      close = int(top3.loc[ticker, '종가'])
-                      vol = int(top3.loc[ticker, '거래량'])
-                      lines.append(f"  • {name[:14]} | 종가: {close:,}원 | 거래량: {vol:,}")
-              except Exception as e:
-                  lines.append(f"  샘플 조회 실패: {e}")
-
-              # 3) 두 번째 날짜와 수익률 계산 가능한지 확인
-              if len(found_dates) >= 2:
-                  prev_date, prev_df = found_dates[1]
-                  lines.append(f"\n<b>[3] 수익률 계산 가능한지 ({prev_date} → {latest_date})</b>")
-                  try:
-                      common = latest_df.index.intersection(prev_df.index)
-                      c1 = latest_df.loc[common, '종가']
-                      c2 = prev_df.loc[common, '종가']
-                      valid = c2[c2 > 0]
-                      common = valid.index.intersection(c1.index)
-                      rets = (c1[common] - valid[common]) / valid[common] * 100
-                      top5 = rets.sort_values(ascending=False).head(5)
-                      for ticker, ret in top5.items():
-                          try:
-                              name = stock.get_etf_ticker_name(ticker)
-                          except:
-                              name = ticker
-                          sign = "+" if ret >= 0 else ""
-                          lines.append(f"  {name[:14]}: {sign}{ret:.2f}%")
-                      lines.append(f"  (계산 대상 {len(common)}개 종목)")
-                  except Exception as e:
-                      lines.append(f"  수익률 계산 실패: {e}")
-          else:
-              lines.append("\n❌ 최근 7일 중 데이터 없음")
-
-          lines.append("\n" + "━" * 18)
-          send("\n".join(lines))
-          print("진단 완료")
-          PYEOF
+  test-monthly:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+      - name: Send monthly ETF report
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          ETF_MODE: monthly
+        run: python etf_alert.py
