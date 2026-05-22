@@ -7,7 +7,7 @@ on:
     paths: ['.github/workflows/test_telegram.yml']
 
 jobs:
-  test-naver-daily:
+  test-sell-signals:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -16,41 +16,85 @@ jobs:
           python-version: '3.11'
       - name: Install dependencies
         run: pip install -r requirements.txt
-      - name: Send daily ETF report (Naver source)
+      - name: Test new sell signals
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-          ETF_MODE: daily
-        run: python etf_alert.py
+        run: |
+          python3 - <<'PYEOF'
+          import os, sys, json, requests, traceback
+          import yfinance as yf
+          import numpy as np
+          sys.path.insert(0, '.')
+          from stock_alert.fetcher import fetch_ohlcv, fetch_fundamentals, resolve_korean_ticker
+          from stock_alert.signals import calc_rsi, calc_macd
 
-  test-weekly:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
-      - name: Install dependencies
-        run: pip install -r requirements.txt
-      - name: Send weekly ETF report
-        env:
-          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-          ETF_MODE: weekly
-        run: python etf_alert.py
+          token = os.environ["TELEGRAM_BOT_TOKEN"]
+          chat_id = os.environ["TELEGRAM_CHAT_ID"]
 
-  test-monthly:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
-      - name: Install dependencies
-        run: pip install -r requirements.txt
-      - name: Send monthly ETF report
-        env:
-          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-          ETF_MODE: monthly
-        run: python etf_alert.py
+          def send(text):
+              requests.post(
+                  f"https://api.telegram.org/bot{token}/sendMessage",
+                  json={"chat_id": chat_id, "parse_mode": "HTML", "text": text},
+                  timeout=10
+              )
+
+          with open("watchlist.json") as f:
+              watchlist = json.load(f)
+
+          lines = ["<b>🧪 매도 시그널 실제 데이터 점검</b>",
+                   "━" * 18]
+
+          for item in watchlist:
+              ticker = resolve_korean_ticker(item["ticker"])
+              name = item.get("name", ticker)
+              buy_price = item["buy_price"]
+
+              try:
+                  df = fetch_ohlcv(ticker)
+                  fund = fetch_fundamentals(ticker)
+                  close = df["Close"].squeeze()
+                  price = float(close.iloc[-1])
+                  chg = (price - buy_price) / buy_price * 100
+                  sign = "+" if chg >= 0 else ""
+
+                  checks = []
+
+                  # RSI
+                  if len(close) >= 14:
+                      rsi_val = float(calc_rsi(close).iloc[-1])
+                      checks.append(f"RSI {rsi_val:.1f}")
+
+                  # MA50
+                  if len(close) >= 50:
+                      ma50 = float(close.rolling(50).mean().iloc[-1])
+                      below50 = "↓MA50" if price < ma50 else "↑MA50"
+                      checks.append(f"{below50}({ma50:,.0f})")
+
+                  # MA200
+                  if len(close) >= 200:
+                      ma200 = float(close.rolling(200).mean().iloc[-1])
+                      ma50v = float(close.rolling(50).mean().iloc[-1])
+                      dc = "⛔DC" if ma50v < ma200 else "OK"
+                      checks.append(f"MA200={dc}")
+
+                  # Fundamentals
+                  pe = fund.get("trailingPE")
+                  peg = fund.get("pegRatio")
+                  if pe:
+                      checks.append(f"P/E {pe:.1f}{'⚠️' if pe > 20 else ''}")
+                  if peg:
+                      checks.append(f"PEG {peg:.2f}{'⚠️' if peg > 2 else ''}")
+
+                  lines.append(f"\n<b>{name}</b> ({ticker})")
+                  lines.append(f"  현재가: {price:,.2f} ({sign}{chg:.2f}%)")
+                  lines.append(f"  " + " | ".join(checks))
+
+              except Exception as e:
+                  lines.append(f"\n{name}: 오류 - {e}")
+
+          lines.append("\n" + "━" * 18)
+          lines.append("⚠️ = 시그널 발동 기준 초과")
+          send("\n".join(lines))
+          print("전송 완료")
+          PYEOF
