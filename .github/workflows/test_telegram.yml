@@ -24,7 +24,21 @@ jobs:
               sys.exit(1)
           resp = requests.post(
               f"https://api.telegram.org/bot{token}/sendMessage",
-              json={"chat_id": chat_id, "text": "✅ 테스트 메시지 (2차)\n\n주식 매도 알림 봇 정상 작동 중입니다.\n손절 -10% / 목표 +100% 기준으로 9개 종목을 모니터링합니다."},
+              json={
+                  "chat_id": chat_id,
+                  "parse_mode": "HTML",
+                  "text": (
+                      "🔴 <b>[매도 시그널 테스트] SK텔레콤 (017670.KS)</b>\n"
+                      "━━━━━━━━━━━━━━━━━━\n"
+                      "📊 1단계: 당일 변동 -6.30%\n"
+                      "📌 2단계: STOP_LOSS\n"
+                      "📋 내용: 손절가 도달: 매수가 62,000 → 현재가 55,800 (-10.00%)\n"
+                      "━━━━━━━━━━━━━━━━━━\n"
+                      "💰 매수가: 62,000.00\n"
+                      "💹 현재가: 55,800.00 (-10.00%)\n"
+                      "🕐 시각: 테스트 메시지"
+                  )
+              },
               timeout=10
           )
           data = resp.json()
