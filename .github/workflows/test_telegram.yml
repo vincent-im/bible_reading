@@ -7,7 +7,7 @@ on:
     paths: ['.github/workflows/test_telegram.yml']
 
 jobs:
-  test-etf-format:
+  diagnose-naver-api:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -16,9 +16,47 @@ jobs:
           python-version: '3.11'
       - name: Install dependencies
         run: pip install -r requirements.txt
-      - name: Send daily ETF report (new format)
+      - name: Diagnose Naver ETF API fields
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-          ETF_MODE: daily
-        run: python etf_alert.py
+        run: |
+          python3 - <<'PYEOF'
+          import os, requests
+
+          token = os.environ["TELEGRAM_BOT_TOKEN"]
+          chat_id = os.environ["TELEGRAM_CHAT_ID"]
+
+          def send(text):
+              requests.post(
+                  f"https://api.telegram.org/bot{token}/sendMessage",
+                  json={"chat_id": chat_id, "parse_mode": "HTML", "text": text},
+                  timeout=10
+              )
+
+          url = "https://finance.naver.com/api/sise/etfItemList.naver"
+          headers = {"User-Agent": "Mozilla/5.0 (compatible; ETFBot/1.0)"}
+          resp = requests.get(url, headers=headers, timeout=10)
+          data = resp.json()
+
+          items = data.get("result", {}).get("etfItemList", [])
+          total = len(items)
+
+          # 첫 번째 항목의 모든 필드명 확인
+          if items:
+              first = items[0]
+              fields = list(first.keys())
+              sample_vals = {k: str(first[k])[:30] for k in fields}
+
+              lines = [
+                  f"<b>🔍 네이버 ETF API 응답 진단</b>",
+                  f"전체 ETF 수: {total}개",
+                  "━" * 18,
+                  "<b>[첫 번째 항목 필드]</b>",
+              ]
+              for k, v in sample_vals.items():
+                  lines.append(f"  {k}: {v}")
+              send("\n".join(lines))
+          else:
+              send("❌ items 비어있음")
+          PYEOF
