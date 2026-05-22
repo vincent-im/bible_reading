@@ -35,31 +35,41 @@ class StockMonitor:
             ticker = resolve_korean_ticker(raw_ticker)
             name = item.get("name", "")
             buy_price = item["buy_price"]
-            stop_loss_pct = item.get("stop_loss_pct", 5.0)
-            take_profit_pct = item.get("take_profit_pct", 20.0)
+            stop_loss_pct = item.get("stop_loss_pct", 10.0)
+            take_profit_pct = item.get("take_profit_pct", 100.0)
             rsi_overbought = item.get("rsi_overbought", 70.0)
+            updown_threshold = item.get("updown_threshold", 5.0)
+            label = f"{name}({ticker})" if name else ticker
 
             try:
                 df = fetch_ohlcv(ticker)
-                signals = check_sell_signals(
+                daily_change, signals = check_sell_signals(
                     df, buy_price,
                     stop_loss_pct=stop_loss_pct,
                     take_profit_pct=take_profit_pct,
                     rsi_overbought=rsi_overbought,
+                    updown_threshold=updown_threshold,
                 )
 
-                label = f"{name}({ticker})" if name else ticker
+                price = float(df["Close"].iloc[-1])
+                chg = (price - buy_price) / buy_price * 100
+                sign = "+" if chg >= 0 else ""
+
+                if daily_change is None:
+                    # 1단계 미충족 — 당일 변동 ±5% 미만
+                    print(f"[{now}] {label}: {price:,.2f} ({sign}{chg:.2f}%) — 1단계 미충족")
+                    continue
+
+                d_sign = "+" if daily_change >= 0 else ""
                 if not signals:
-                    price = float(df["Close"].iloc[-1])
-                    chg = (price - buy_price) / buy_price * 100
-                    sign = "+" if chg >= 0 else ""
-                    print(f"[{now}] {label}: {price:,.2f} ({sign}{chg:.2f}%) — 시그널 없음")
+                    # 1단계 충족, 2단계 시그널 없음
+                    print(f"[{now}] {label}: {price:,.2f} ({sign}{chg:.2f}%) — 1단계 충족(당일{d_sign}{daily_change:.2f}%) / 2단계 시그널 없음")
                     continue
 
                 for sig in signals:
                     if self._already_fired(ticker, sig.signal_type):
                         continue
-                    print(f"[{now}] {label}: {sig.signal_type} 시그널 발생 → 텔레그램 전송")
+                    print(f"[{now}] {label}: {sig.signal_type} 시그널 발생 (당일{d_sign}{daily_change:.2f}%) → 텔레그램 전송")
                     sent = self.notifier.send_sell_alert(
                         ticker=ticker,
                         signal_type=sig.signal_type,
@@ -67,6 +77,7 @@ class StockMonitor:
                         current_price=sig.current_price,
                         buy_price=buy_price,
                         change_pct=sig.change_pct,
+                        daily_change_pct=sig.daily_change_pct,
                         name=name,
                     )
                     if sent:
