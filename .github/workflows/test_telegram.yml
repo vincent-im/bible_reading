@@ -10,41 +10,107 @@ jobs:
   test:
     runs-on: ubuntu-latest
     steps:
-      - name: Send test message
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: ETF 단계별 진단 및 텔레그램 전송
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
         run: |
           python3 - <<'EOF'
-          import os, requests, sys
+          import os, requests, sys, traceback
+          from datetime import datetime, timedelta
+
           token = os.environ.get("TELEGRAM_BOT_TOKEN", "")
           chat_id = os.environ.get("TELEGRAM_CHAT_ID", "")
-          if not token or not chat_id:
-              print("TELEGRAM_BOT_TOKEN 또는 TELEGRAM_CHAT_ID가 설정되지 않았습니다.")
+
+          def send(text):
+              requests.post(
+                  f"https://api.telegram.org/bot{token}/sendMessage",
+                  json={"chat_id": chat_id, "parse_mode": "HTML", "text": text},
+                  timeout=10
+              )
+
+          # Step 1: pykrx import
+          try:
+              from pykrx import stock
+              send("✅ 1단계: pykrx import 성공")
+          except Exception as e:
+              send(f"❌ 1단계: pykrx import 실패\n<code>{e}</code>")
               sys.exit(1)
-          resp = requests.post(
-              f"https://api.telegram.org/bot{token}/sendMessage",
-              json={
-                  "chat_id": chat_id,
-                  "parse_mode": "HTML",
-                  "text": (
-                      "🔴 <b>[매도 시그널 테스트] SK텔레콤 (017670.KS)</b>\n"
-                      "━━━━━━━━━━━━━━━━━━\n"
-                      "📊 1단계: 당일 변동 -6.30%\n"
-                      "📌 2단계: STOP_LOSS\n"
-                      "📋 내용: 손절가 도달: 매수가 62,000 → 현재가 55,800 (-10.00%)\n"
-                      "━━━━━━━━━━━━━━━━━━\n"
-                      "💰 매수가: 62,000.00\n"
-                      "💹 현재가: 55,800.00 (-10.00%)\n"
-                      "🕐 시각: 테스트 메시지 (3차)"
-                  )
-              },
-              timeout=10
-          )
-          data = resp.json()
-          if data.get("ok"):
-              print("텔레그램 전송 성공!")
-          else:
-              print(f"전송 실패: {data}")
+
+          # Step 2: 날짜 계산
+          days = []
+          dt = datetime.now()
+          while len(days) < 2:
+              if dt.weekday() < 5:
+                  days.append(dt.strftime("%Y%m%d"))
+              dt -= timedelta(days=1)
+          today_str, prev_str = days[0], days[1]
+          send(f"✅ 2단계: 조회 날짜\n오늘: {today_str}\n전일: {prev_str}")
+
+          # Step 3: ETF 데이터 조회
+          try:
+              df_today = stock.get_etf_ohlcv_by_ticker(today_str)
+              df_prev = stock.get_etf_ohlcv_by_ticker(prev_str)
+              send(f"✅ 3단계: 데이터 조회 완료\n오늘: {len(df_today)}개\n전일: {len(df_prev)}개\n컬럼: {df_today.columns.tolist()[:5] if not df_today.empty else '없음'}")
+          except Exception as e:
+              send(f"❌ 3단계: 데이터 조회 실패\n<code>{traceback.format_exc()[:500]}</code>")
+              sys.exit(1)
+
+          # Step 4: 수익률 계산 및 상위 20개 전송
+          try:
+              if df_today.empty:
+                  send("⚠️ 4단계: 오늘 데이터 없음 (장 개시 전 또는 휴장)")
+                  sys.exit(0)
+
+              close_col = '종가' if '종가' in df_today.columns else df_today.columns[4]
+              common = df_today.index.intersection(df_prev.index)
+              ct = df_today.loc[common, close_col]
+              cp = df_prev.loc[common, close_col]
+              valid = cp[cp > 0]
+              common = valid.index.intersection(ct.index)
+              returns = (ct[common] - valid[common]) / valid[common] * 100
+
+              import pandas as pd
+              result = pd.DataFrame({'close': ct[common], 'return': returns})
+              top20 = result.sort_values('return', ascending=False).head(20)
+
+              names = {}
+              for ticker in top20.index:
+                  try:
+                      names[ticker] = stock.get_etf_ticker_name(ticker)
+                  except:
+                      names[ticker] = ticker
+              top20 = top20.copy()
+              top20['name'] = pd.Series(names)
+
+              now = datetime.now().strftime("%H:%M")
+              date_label = f"{today_str[:4]}-{today_str[4:6]}-{today_str[6:]}"
+              lines = [
+                  "<b>📊 국내 ETF 수익률 TOP 20</b>",
+                  "━━━━━━━━━━━━━━━━━━",
+                  f"📅 {date_label} {now} 기준\n",
+              ]
+              for i, (ticker, row) in enumerate(top20.iterrows(), 1):
+                  name = str(row.get('name', ticker))
+                  if len(name) > 16:
+                      name = name[:15] + "…"
+                  ret = row['return']
+                  close = int(row['close'])
+                  sign = "+" if ret >= 0 else ""
+                  lines.append(f"{i:2d}위  {name:<16}  {sign}{ret:.2f}%  {close:,}원")
+              lines.append("\n━━━━━━━━━━━━━━━━━━")
+              send("\n".join(lines))
+              print("전송 완료")
+          except Exception as e:
+              send(f"❌ 4단계: 수익률 계산 실패\n<code>{traceback.format_exc()[:500]}</code>")
               sys.exit(1)
           EOF
