@@ -32,19 +32,31 @@ def calc_macd(prices: pd.Series, fast=12, slow=26, signal=9):
     return macd_line, signal_line
 
 
-def check_updown_variables(df: pd.DataFrame, threshold: float = 5.0) -> Optional[float]:
+def check_updown_variables(
+    df: pd.DataFrame, threshold: float = 5.0, current_price: Optional[float] = None
+) -> Optional[float]:
     """
     1단계: 당일 변동률 확인.
-    전일 종가 대비 ±threshold% 이상이면 변동률 반환, 미달이면 None 반환.
+    current_price가 주어지면 전일 종가(EOD 마지막 값) 대비 실시간 변동률을 계산.
+    없으면 EOD 마지막 두 종가로 비교.
+    ±threshold% 이상이면 변동률 반환, 미달이면 None 반환.
     """
     close = df["Close"].squeeze()
-    if len(close) < 2:
-        return None
-    prev_close = float(close.iloc[-2])
-    current_price = float(close.iloc[-1])
-    if prev_close == 0:
-        return None
-    daily_change = (current_price - prev_close) / prev_close * 100
+    if current_price is not None:
+        if len(close) < 1:
+            return None
+        prev_close = float(close.iloc[-1])
+        if prev_close == 0:
+            return None
+        daily_change = (current_price - prev_close) / prev_close * 100
+    else:
+        if len(close) < 2:
+            return None
+        prev_close = float(close.iloc[-2])
+        current_price = float(close.iloc[-1])
+        if prev_close == 0:
+            return None
+        daily_change = (current_price - prev_close) / prev_close * 100
     if abs(daily_change) >= threshold:
         return daily_change
     return None
@@ -57,13 +69,16 @@ def _check_stage2(
     take_profit_pct: float,
     rsi_overbought: float,
     fundamentals: Optional[dict] = None,
+    current_price: Optional[float] = None,
 ) -> list[SignalResult]:
     """
     2단계: 10개 매도 시그널 검사 (5개 기존 + 5개 투자 대가 기반 신규).
     1단계(UPDOWN_VARIABLES) 충족 후에만 호출됩니다.
+    current_price가 주어지면 실시간 가격으로 손익 계산, 없으면 EOD 마지막 종가 사용.
     """
     close = df["Close"].squeeze()
-    current_price = float(close.iloc[-1])
+    if current_price is None:
+        current_price = float(close.iloc[-1])
     change_pct = (current_price - buy_price) / buy_price * 100
 
     signals = []
@@ -225,12 +240,14 @@ def check_sell_signals(
     rsi_overbought: float = 70.0,
     updown_threshold: float = 5.0,
     fundamentals: Optional[dict] = None,
+    current_price: Optional[float] = None,
 ) -> tuple[Optional[float], list[SignalResult]]:
     """
     2단계 매도 시그널 체크.
 
     1단계 (UPDOWN_VARIABLES):
       전일 종가 대비 ±updown_threshold% 이상 변동 시 2단계 진행.
+      current_price가 주어지면 실시간 가격으로 비교.
 
     2단계 (10개 시그널):
       기술적: STOP_LOSS, TAKE_PROFIT, RSI_OVERBOUGHT, MACD_DEATH_CROSS,
@@ -239,11 +256,11 @@ def check_sell_signals(
 
     반환값: (daily_change_pct | None, [SignalResult, ...])
     """
-    daily_change = check_updown_variables(df, updown_threshold)
+    daily_change = check_updown_variables(df, updown_threshold, current_price)
     if daily_change is None:
         return None, []
 
-    signals = _check_stage2(df, buy_price, stop_loss_pct, take_profit_pct, rsi_overbought, fundamentals)
+    signals = _check_stage2(df, buy_price, stop_loss_pct, take_profit_pct, rsi_overbought, fundamentals, current_price)
     for sig in signals:
         sig.daily_change_pct = daily_change
     return daily_change, signals

@@ -1,7 +1,7 @@
 import time
 import json
 from datetime import datetime
-from .fetcher import fetch_ohlcv, fetch_fundamentals, resolve_korean_ticker
+from .fetcher import fetch_ohlcv, fetch_fundamentals, resolve_korean_ticker, get_current_price
 from .signals import check_sell_signals
 from .telegram_notifier import TelegramNotifier
 
@@ -44,6 +44,7 @@ class StockMonitor:
             try:
                 df = fetch_ohlcv(ticker)
                 fundamentals = fetch_fundamentals(ticker)
+                price = get_current_price(ticker)  # 실시간 현재가
                 daily_change, signals = check_sell_signals(
                     df, buy_price,
                     stop_loss_pct=stop_loss_pct,
@@ -51,9 +52,9 @@ class StockMonitor:
                     rsi_overbought=rsi_overbought,
                     updown_threshold=updown_threshold,
                     fundamentals=fundamentals,
+                    current_price=price,
                 )
 
-                price = float(df["Close"].iloc[-1])
                 chg = (price - buy_price) / buy_price * 100
                 sign = "+" if chg >= 0 else ""
 
