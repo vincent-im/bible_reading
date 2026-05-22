@@ -3,7 +3,13 @@ name: Stock Alert Monitor
 on:
   schedule:
     - cron: '*/10 * * * *'   # 10분마다 실행
-  workflow_dispatch:           # 수동 실행도 가능
+  workflow_dispatch:           # 수동 실행
+  push:
+    branches: [main]
+    paths:
+      - 'watchlist.json'
+      - 'stock_alert/**'
+      - 'main.py'
 
 jobs:
   monitor:
