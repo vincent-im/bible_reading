@@ -52,26 +52,8 @@ class TelegramNotifier:
         )
         return self.send_message(text)
 
-    def send_etf_report(self, df, date_label: str) -> bool:
-        now = datetime.now().strftime("%H:%M")
-        lines = [
-            "<b>📊 국내 ETF 수익률 TOP 20</b>",
-            "━━━━━━━━━━━━━━━━━━",
-            f"📅 {date_label} {now} 기준\n",
-        ]
-        for i, (ticker, row) in enumerate(df.iterrows(), 1):
-            name = str(row.get('name', ticker))
-            if len(name) > 16:
-                name = name[:15] + "…"
-            ret = row['return']
-            close = int(row['close'])
-            sign = "+" if ret >= 0 else ""
-            lines.append(f"{i:2d}위  {name:<16}  {sign}{ret:.2f}%  {close:,}원")
-        lines.append("\n━━━━━━━━━━━━━━━━━━")
-        return self.send_message("\n".join(lines))
-
     def send_startup_message(self, watchlist: list[dict]):
-        lines = ["<b>📡 주식 매도 알림 시작</b>", "━━━━━━━━━━━━━━━━━━", "모니터링 종목:"]
+        lines = [f"<b>📡 주식 매도 알림 시작</b>", "━━━━━━━━━━━━━━━━━━", "모니터링 종목:"]
         for item in watchlist:
             name = item.get("name", "")
             display = f"{name} ({item['ticker']})" if name else item['ticker']
@@ -83,7 +65,47 @@ class TelegramNotifier:
         lines.append("━━━━━━━━━━━━━━━━━━")
         self.send_message("\n".join(lines))
 
+    def _format_etf_rows(self, df: "pd.DataFrame") -> list[str]:
+        rows = []
+        for i, (ticker, row) in enumerate(df.iterrows(), 1):
+            name = str(row.get('name', ticker))
+            if len(name) > 16:
+                name = name[:15] + "…"
+            ret = row['return']
+            close = int(row['close'])
+            sign = "+" if ret >= 0 else ""
+            rows.append(f"{i:2d}위  {name:<16}  {sign}{ret:.2f}%  {close:,}원")
+        return rows
+
+    def send_etf_report(self, df: "pd.DataFrame", date_label: str) -> bool:
+        now = datetime.now().strftime("%H:%M")
+        lines = [
+            "<b>📊 국내 ETF 당일 수익률 TOP 20</b>",
+            "━━━━━━━━━━━━━━━━━━",
+            f"📅 {date_label} {now} 기준\n",
+        ] + self._format_etf_rows(df) + ["\n━━━━━━━━━━━━━━━━━━"]
+        return self.send_message("\n".join(lines))
+
+    def send_etf_weekly_report(self, df: "pd.DataFrame", date_label: str) -> bool:
+        now = datetime.now().strftime("%H:%M")
+        lines = [
+            "<b>📊 국내 ETF 주간 수익률 TOP 20</b>",
+            "━━━━━━━━━━━━━━━━━━",
+            f"📅 {date_label} {now} 기준\n",
+        ] + self._format_etf_rows(df) + ["\n━━━━━━━━━━━━━━━━━━"]
+        return self.send_message("\n".join(lines))
+
+    def send_etf_monthly_report(self, df: "pd.DataFrame", date_label: str) -> bool:
+        now = datetime.now().strftime("%H:%M")
+        lines = [
+            "<b>📊 국내 ETF 월간 수익률 TOP 20</b>",
+            "━━━━━━━━━━━━━━━━━━",
+            f"📅 {date_label} {now} 기준\n",
+        ] + self._format_etf_rows(df) + ["\n━━━━━━━━━━━━━━━━━━"]
+        return self.send_message("\n".join(lines))
+
     def validate(self) -> bool:
+        """봇 토큰과 채팅 ID가 유효한지 확인합니다."""
         try:
             resp = requests.get(f"{self.base_url}/getMe", timeout=10)
             resp.raise_for_status()

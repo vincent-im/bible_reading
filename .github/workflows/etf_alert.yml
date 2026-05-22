@@ -1,27 +1,76 @@
-name: ETF Top 20 Alert
+name: ETF Alert
 
 on:
   schedule:
-    - cron: '30 6 * * 1-5'   # 15:30 KST (장 마감 직후), 월~금
-  workflow_dispatch:           # 수동 실행
+    - cron: '30 6 * * 1-5'   # 15:30 KST 장마감 직후 (월~금, 당일 리포트)
+    - cron: '0 23 * * 5'     # 08:00 KST 토요일 (주간 리포트)
+    - cron: '0 0 1 * *'      # 09:00 KST 매월 1일 (월간 리포트)
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: 'Report mode'
+        required: false
+        default: 'daily'
+        type: choice
+        options:
+          - daily
+          - weekly
+          - monthly
 
 jobs:
-  etf-alert:
+  daily:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
-
+    if: >
+      github.event.schedule == '30 6 * * 1-5' ||
+      (github.event_name == 'workflow_dispatch' && github.event.inputs.mode == 'daily')
     steps:
       - uses: actions/checkout@v4
-
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-
       - name: Install dependencies
         run: pip install -r requirements.txt
-
-      - name: Send ETF top 20
+      - name: Send daily ETF top 20
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          ETF_MODE: daily
+        run: python etf_alert.py
+
+  weekly:
+    runs-on: ubuntu-latest
+    if: >
+      github.event.schedule == '0 23 * * 5' ||
+      (github.event_name == 'workflow_dispatch' && github.event.inputs.mode == 'weekly')
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+      - name: Send weekly ETF top 20
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          ETF_MODE: weekly
+        run: python etf_alert.py
+
+  monthly:
+    runs-on: ubuntu-latest
+    if: >
+      github.event.schedule == '0 0 1 * *' ||
+      (github.event_name == 'workflow_dispatch' && github.event.inputs.mode == 'monthly')
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+      - name: Send monthly ETF top 20
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          ETF_MODE: monthly
         run: python etf_alert.py
