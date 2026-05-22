@@ -29,3 +29,4 @@ jobs:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
         run: python etf_alert.py
+        # 오늘 데이터 없을 경우 자동으로 전일 데이터로 폴백
