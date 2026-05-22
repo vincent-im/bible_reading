@@ -32,15 +32,25 @@ def calc_macd(prices: pd.Series, fast=12, slow=26, signal=9):
     return macd_line, signal_line
 
 
-def check_updown_variables(df: pd.DataFrame, threshold: float = 5.0) -> Optional[float]:
+def check_updown_variables(
+    df: pd.DataFrame, threshold: float = 5.0, current_price: Optional[float] = None
+) -> Optional[float]:
     close = df["Close"].squeeze()
-    if len(close) < 2:
-        return None
-    prev_close = float(close.iloc[-2])
-    current_price = float(close.iloc[-1])
-    if prev_close == 0:
-        return None
-    daily_change = (current_price - prev_close) / prev_close * 100
+    if current_price is not None:
+        if len(close) < 1:
+            return None
+        prev_close = float(close.iloc[-1])
+        if prev_close == 0:
+            return None
+        daily_change = (current_price - prev_close) / prev_close * 100
+    else:
+        if len(close) < 2:
+            return None
+        prev_close = float(close.iloc[-2])
+        current_price = float(close.iloc[-1])
+        if prev_close == 0:
+            return None
+        daily_change = (current_price - prev_close) / prev_close * 100
     if abs(daily_change) >= threshold:
         return daily_change
     return None
@@ -53,9 +63,11 @@ def _check_stage2(
     take_profit_pct: float,
     rsi_overbought: float,
     fundamentals: Optional[dict] = None,
+    current_price: Optional[float] = None,
 ) -> list[SignalResult]:
     close = df["Close"].squeeze()
-    current_price = float(close.iloc[-1])
+    if current_price is None:
+        current_price = float(close.iloc[-1])
     change_pct = (current_price - buy_price) / buy_price * 100
 
     signals = []
@@ -205,12 +217,13 @@ def check_sell_signals(
     rsi_overbought: float = 70.0,
     updown_threshold: float = 5.0,
     fundamentals: Optional[dict] = None,
+    current_price: Optional[float] = None,
 ) -> tuple[Optional[float], list[SignalResult]]:
-    daily_change = check_updown_variables(df, updown_threshold)
+    daily_change = check_updown_variables(df, updown_threshold, current_price)
     if daily_change is None:
         return None, []
 
-    signals = _check_stage2(df, buy_price, stop_loss_pct, take_profit_pct, rsi_overbought, fundamentals)
+    signals = _check_stage2(df, buy_price, stop_loss_pct, take_profit_pct, rsi_overbought, fundamentals, current_price)
     for sig in signals:
         sig.daily_change_pct = daily_change
     return daily_change, signals
