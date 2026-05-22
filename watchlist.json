@@ -3,72 +3,72 @@
     "ticker": "017670.KS",
     "name": "SK텔레콤",
     "buy_price": 62000,
-    "stop_loss_pct": 5.0,
-    "take_profit_pct": 20.0,
+    "stop_loss_pct": 10.0,
+    "take_profit_pct": 100.0,
     "rsi_overbought": 70.0
   },
   {
     "ticker": "034220.KS",
     "name": "LG디스플레이",
     "buy_price": 13500,
-    "stop_loss_pct": 5.0,
-    "take_profit_pct": 20.0,
+    "stop_loss_pct": 10.0,
+    "take_profit_pct": 100.0,
     "rsi_overbought": 70.0
   },
   {
     "ticker": "099190.KQ",
     "name": "아이센스",
     "buy_price": 27000,
-    "stop_loss_pct": 5.0,
-    "take_profit_pct": 20.0,
+    "stop_loss_pct": 10.0,
+    "take_profit_pct": 100.0,
     "rsi_overbought": 70.0
   },
   {
     "ticker": "315640.KQ",
     "name": "딥노이드",
     "buy_price": 14000,
-    "stop_loss_pct": 5.0,
-    "take_profit_pct": 20.0,
+    "stop_loss_pct": 10.0,
+    "take_profit_pct": 100.0,
     "rsi_overbought": 70.0
   },
   {
     "ticker": "006280.KS",
     "name": "녹십자",
     "buy_price": 145000,
-    "stop_loss_pct": 5.0,
-    "take_profit_pct": 20.0,
+    "stop_loss_pct": 10.0,
+    "take_profit_pct": 100.0,
     "rsi_overbought": 70.0
   },
   {
     "ticker": "PYPL",
     "name": "PayPal Holdings Inc.",
     "buy_price": 59.0,
-    "stop_loss_pct": 5.0,
-    "take_profit_pct": 20.0,
+    "stop_loss_pct": 10.0,
+    "take_profit_pct": 100.0,
     "rsi_overbought": 70.0
   },
   {
     "ticker": "PFE",
     "name": "Pfizer Inc.",
     "buy_price": 26.0,
-    "stop_loss_pct": 5.0,
-    "take_profit_pct": 20.0,
+    "stop_loss_pct": 10.0,
+    "take_profit_pct": 100.0,
     "rsi_overbought": 70.0
   },
   {
     "ticker": "SLV",
     "name": "iShares Silver Trust",
     "buy_price": 76.0,
-    "stop_loss_pct": 5.0,
-    "take_profit_pct": 20.0,
+    "stop_loss_pct": 10.0,
+    "take_profit_pct": 100.0,
     "rsi_overbought": 70.0
   },
   {
     "ticker": "CRCL",
     "name": "Circle Internet Group, Inc.",
     "buy_price": 71.0,
-    "stop_loss_pct": 5.0,
-    "take_profit_pct": 20.0,
+    "stop_loss_pct": 10.0,
+    "take_profit_pct": 100.0,
     "rsi_overbought": 70.0
   }
 ]
