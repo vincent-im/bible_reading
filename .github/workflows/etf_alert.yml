@@ -2,9 +2,16 @@ name: ETF Alert
 
 on:
   schedule:
-    - cron: '30 6 * * 1-5'   # 15:30 KST 장마감 직후 (월~금, 당일 리포트)
-    - cron: '0 23 * * 5'     # 08:00 KST 토요일 (주간 리포트)
-    - cron: '0 0 1 * *'      # 09:00 KST 매월 1일 (월간 리포트)
+    # 당일 리포트: 장중 2시간마다 (09:00 / 11:00 / 13:00 / 15:00 / 15:30 KST)
+    - cron: '0 0 * * 1-5'    # 09:00 KST
+    - cron: '0 2 * * 1-5'    # 11:00 KST
+    - cron: '0 4 * * 1-5'    # 13:00 KST
+    - cron: '0 6 * * 1-5'    # 15:00 KST
+    - cron: '30 6 * * 1-5'   # 15:30 KST (장마감)
+    # 주간 리포트: 토요일 08:00 KST
+    - cron: '0 23 * * 5'     # 08:00 KST 토요일
+    # 월간 리포트: 매월 1일 09:00 KST
+    - cron: '0 0 1 * *'      # 09:00 KST 매월 1일
   workflow_dispatch:
     inputs:
       mode:
@@ -21,6 +28,10 @@ jobs:
   daily:
     runs-on: ubuntu-latest
     if: >
+      github.event.schedule == '0 0 * * 1-5' ||
+      github.event.schedule == '0 2 * * 1-5' ||
+      github.event.schedule == '0 4 * * 1-5' ||
+      github.event.schedule == '0 6 * * 1-5' ||
       github.event.schedule == '30 6 * * 1-5' ||
       (github.event_name == 'workflow_dispatch' && github.event.inputs.mode == 'daily')
     steps:
