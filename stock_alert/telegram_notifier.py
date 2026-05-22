@@ -65,25 +65,43 @@ class TelegramNotifier:
         lines.append("━━━━━━━━━━━━━━━━━━")
         self.send_message("\n".join(lines))
 
-    def send_etf_report(self, df: "pd.DataFrame", date_label: str) -> bool:
-        now = datetime.now().strftime("%H:%M")
-        lines = [
-            f"<b>📊 국내 ETF 수익률 TOP 20</b>",
-            "━━━━━━━━━━━━━━━━━━",
-            f"📅 {date_label} {now} 기준\n",
-        ]
+    def _format_etf_rows(self, df: "pd.DataFrame") -> list[str]:
+        rows = []
         for i, (ticker, row) in enumerate(df.iterrows(), 1):
             name = str(row.get('name', ticker))
-            # 이름이 너무 길면 자르기
             if len(name) > 16:
                 name = name[:15] + "…"
             ret = row['return']
             close = int(row['close'])
             sign = "+" if ret >= 0 else ""
-            lines.append(
-                f"{i:2d}위  {name:<16}  {sign}{ret:.2f}%  {close:,}원"
-            )
-        lines.append("\n━━━━━━━━━━━━━━━━━━")
+            rows.append(f"{i:2d}위  {name:<16}  {sign}{ret:.2f}%  {close:,}원")
+        return rows
+
+    def send_etf_report(self, df: "pd.DataFrame", date_label: str) -> bool:
+        now = datetime.now().strftime("%H:%M")
+        lines = [
+            "<b>📊 국내 ETF 당일 수익률 TOP 20</b>",
+            "━━━━━━━━━━━━━━━━━━",
+            f"📅 {date_label} {now} 기준\n",
+        ] + self._format_etf_rows(df) + ["\n━━━━━━━━━━━━━━━━━━"]
+        return self.send_message("\n".join(lines))
+
+    def send_etf_weekly_report(self, df: "pd.DataFrame", date_label: str) -> bool:
+        now = datetime.now().strftime("%H:%M")
+        lines = [
+            "<b>📊 국내 ETF 주간 수익률 TOP 20</b>",
+            "━━━━━━━━━━━━━━━━━━",
+            f"📅 {date_label} {now} 기준\n",
+        ] + self._format_etf_rows(df) + ["\n━━━━━━━━━━━━━━━━━━"]
+        return self.send_message("\n".join(lines))
+
+    def send_etf_monthly_report(self, df: "pd.DataFrame", date_label: str) -> bool:
+        now = datetime.now().strftime("%H:%M")
+        lines = [
+            "<b>📊 국내 ETF 월간 수익률 TOP 20</b>",
+            "━━━━━━━━━━━━━━━━━━",
+            f"📅 {date_label} {now} 기준\n",
+        ] + self._format_etf_rows(df) + ["\n━━━━━━━━━━━━━━━━━━"]
         return self.send_message("\n".join(lines))
 
     def validate(self) -> bool:
