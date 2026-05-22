@@ -1,9 +1,32 @@
 import time
 import json
-from datetime import datetime
+from datetime import datetime, time as dt_time
+from zoneinfo import ZoneInfo
 from .fetcher import fetch_ohlcv, fetch_fundamentals, resolve_korean_ticker, get_current_price
 from .signals import check_sell_signals
 from .telegram_notifier import TelegramNotifier
+
+_KST = ZoneInfo("Asia/Seoul")
+_ET  = ZoneInfo("America/New_York")
+
+
+def _is_korean_market_open() -> bool:
+    """KRX 개장 여부 — 평일 09:00~15:30 KST"""
+    now = datetime.now(_KST)
+    return now.weekday() < 5 and dt_time(9, 0) <= now.time() <= dt_time(15, 30)
+
+
+def _is_us_market_open() -> bool:
+    """NYSE/NASDAQ 개장 여부 — 평일 09:30~16:00 ET"""
+    now = datetime.now(_ET)
+    return now.weekday() < 5 and dt_time(9, 30) <= now.time() <= dt_time(16, 0)
+
+
+def _is_market_open(ticker: str) -> bool:
+    upper = ticker.upper()
+    if upper.endswith(".KS") or upper.endswith(".KQ"):
+        return _is_korean_market_open()
+    return _is_us_market_open()
 
 
 class StockMonitor:
@@ -39,6 +62,11 @@ class StockMonitor:
             rsi_overbought = item.get("rsi_overbought", 70.0)
             updown_threshold = item.get("updown_threshold", 5.0)
             label = f"{name}({ticker})" if name else ticker
+
+            if not _is_market_open(ticker):
+                market = "KRX" if ticker.upper().endswith((".KS", ".KQ")) else "NYSE/NASDAQ"
+                print(f"[{now}] {label}: {market} 휴장 — 건너뜀")
+                continue
 
             try:
                 df = fetch_ohlcv(ticker)
