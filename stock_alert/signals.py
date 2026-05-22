@@ -1,6 +1,6 @@
 import pandas as pd
 import numpy as np
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Optional
 
 
@@ -11,6 +11,7 @@ class SignalResult:
     message: str
     current_price: float
     change_pct: float
+    daily_change_pct: float = field(default=0.0)  # 당일 변동률 (1단계 값)
 
 
 def calc_rsi(prices: pd.Series, period: int = 14) -> pd.Series:
@@ -31,22 +32,34 @@ def calc_macd(prices: pd.Series, fast=12, slow=26, signal=9):
     return macd_line, signal_line
 
 
-def check_sell_signals(
+def check_updown_variables(df: pd.DataFrame, threshold: float = 5.0) -> Optional[float]:
+    """
+    1단계: 당일 변동률 확인.
+    전일 종가 대비 ±threshold% 이상이면 변동률을 반환, 미달이면 None 반환.
+    """
+    close = df["Close"].squeeze()
+    if len(close) < 2:
+        return None
+    prev_close = float(close.iloc[-2])
+    current_price = float(close.iloc[-1])
+    if prev_close == 0:
+        return None
+    daily_change = (current_price - prev_close) / prev_close * 100
+    if abs(daily_change) >= threshold:
+        return daily_change
+    return None
+
+
+def _check_stage2(
     df: pd.DataFrame,
     buy_price: float,
-    stop_loss_pct: float = 5.0,
-    take_profit_pct: float = 20.0,
-    rsi_overbought: float = 70.0,
+    stop_loss_pct: float,
+    take_profit_pct: float,
+    rsi_overbought: float,
 ) -> list[SignalResult]:
     """
-    여러 매도 시그널을 검사하고 발생한 시그널 목록을 반환합니다.
-
-    시그널 종류:
-    - STOP_LOSS: 매수가 대비 손절 % 이하 하락
-    - TAKE_PROFIT: 매수가 대비 목표 % 이상 상승
-    - RSI_OVERBOUGHT: RSI가 과매수 구간 진입 후 하락 전환
-    - MACD_DEATH_CROSS: MACD 데드크로스 (신호선 하향 돌파)
-    - BELOW_MA20: 종가가 20일 이동평균선 하향 이탈
+    2단계: 기존 5개 매도 시그널 검사.
+    1단계(UPDOWN_VARIABLES)가 충족된 후에만 호출됩니다.
     """
     close = df["Close"].squeeze()
     current_price = float(close.iloc[-1])
@@ -99,7 +112,6 @@ def check_sell_signals(
             sig_prev = float(signal_line.iloc[-2])
             macd_curr = float(macd_line.iloc[-1])
             sig_curr = float(signal_line.iloc[-1])
-            # 직전에 MACD > 신호선이었다가 이번에 MACD < 신호선으로 하향 돌파
             if macd_prev >= sig_prev and macd_curr < sig_curr:
                 signals.append(SignalResult(
                     triggered=True,
@@ -126,3 +138,35 @@ def check_sell_signals(
             ))
 
     return signals
+
+
+def check_sell_signals(
+    df: pd.DataFrame,
+    buy_price: float,
+    stop_loss_pct: float = 10.0,
+    take_profit_pct: float = 100.0,
+    rsi_overbought: float = 70.0,
+    updown_threshold: float = 5.0,
+) -> tuple[Optional[float], list[SignalResult]]:
+    """
+    2단계 매도 시그널 체크.
+
+    1단계 (UPDOWN_VARIABLES):
+      전일 종가 대비 ±updown_threshold% 이상 변동 시 2단계로 진행.
+      미달이면 빈 리스트 반환.
+
+    2단계:
+      STOP_LOSS, TAKE_PROFIT, RSI_OVERBOUGHT, MACD_DEATH_CROSS, BELOW_MA20 검사.
+
+    반환값: (daily_change_pct | None, [SignalResult, ...])
+      - daily_change_pct: 1단계 당일 변동률 (None이면 1단계 미충족)
+      - signals: 2단계에서 발생한 시그널 목록
+    """
+    daily_change = check_updown_variables(df, updown_threshold)
+    if daily_change is None:
+        return None, []
+
+    signals = _check_stage2(df, buy_price, stop_loss_pct, take_profit_pct, rsi_overbought)
+    for sig in signals:
+        sig.daily_change_pct = daily_change
+    return daily_change, signals

@@ -25,23 +25,25 @@ class TelegramNotifier:
 
     def send_sell_alert(self, ticker: str, signal_type: str, message: str,
                         current_price: float, buy_price: float, change_pct: float,
-                        name: str = ""):
+                        daily_change_pct: float = 0.0, name: str = ""):
         icon_map = {
-            "STOP_LOSS":      "🔴",
-            "TAKE_PROFIT":    "🟢",
-            "RSI_OVERBOUGHT": "🟡",
+            "STOP_LOSS":        "🔴",
+            "TAKE_PROFIT":      "🟢",
+            "RSI_OVERBOUGHT":   "🟡",
             "MACD_DEATH_CROSS": "🟠",
-            "BELOW_MA20":     "🟠",
+            "BELOW_MA20":       "🟠",
         }
         icon = icon_map.get(signal_type, "⚠️")
         sign = "+" if change_pct >= 0 else ""
+        d_sign = "+" if daily_change_pct >= 0 else ""
         now = datetime.now().strftime("%Y-%m-%d %H:%M")
         display = f"{name} ({ticker})" if name else ticker
 
         text = (
             f"{icon} <b>[매도 시그널] {display}</b>\n"
             f"━━━━━━━━━━━━━━━━━━\n"
-            f"📌 시그널: {signal_type}\n"
+            f"📊 1단계: 당일 변동 {d_sign}{daily_change_pct:.2f}%\n"
+            f"📌 2단계: {signal_type}\n"
             f"📋 내용: {message}\n"
             f"━━━━━━━━━━━━━━━━━━\n"
             f"💰 매수가: {buy_price:,.2f}\n"
@@ -64,7 +66,6 @@ class TelegramNotifier:
         self.send_message("\n".join(lines))
 
     def validate(self) -> bool:
-        """봇 토큰과 채팅 ID가 유효한지 확인합니다."""
         try:
             resp = requests.get(f"{self.base_url}/getMe", timeout=10)
             resp.raise_for_status()
