@@ -32,7 +32,13 @@ npm install      # 의존성 설치
 npm run dev      # 개발 서버 (http://localhost:5173)
 npm run build    # 프로덕션 빌드 (dist/)
 npm run preview  # 빌드 결과 미리보기
+
+npm run build:standalone  # 모든 JS·CSS를 인라인한 단일 HTML (dist/index.html)
 ```
+
+> `build:standalone`으로 만든 `dist/index.html`은 서버 없이 **파일을 더블클릭**해서
+> PC·휴대폰 브라우저에서 바로 실행할 수 있습니다. 라우팅은 `HashRouter`,
+> 자산 경로는 상대경로(`base: './'`)라 `file://` 및 임의 하위경로 배포 모두 호환됩니다.
 
 ## 📂 프로젝트 구조
 
