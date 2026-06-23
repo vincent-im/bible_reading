@@ -1,0 +1,28 @@
+{
+  "name": "darakbang-bible-reading",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "description": "다락방 성경통독 앱 - 교회 소모임 순원들과 함께하는 성경통독 진도 관리",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "build:standalone": "vite build --mode standalone",
+    "preview": "vite preview",
+    "lint": "eslint ."
+  },
+  "dependencies": {
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-router-dom": "^6.26.2",
+    "recharts": "^2.13.0"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^4.3.2",
+    "autoprefixer": "^10.4.20",
+    "postcss": "^8.4.47",
+    "tailwindcss": "^3.4.13",
+    "vite": "^5.4.8",
+    "vite-plugin-singlefile": "^2.3.3"
+  }
+}

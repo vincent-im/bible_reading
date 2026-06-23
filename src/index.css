@@ -1,0 +1,40 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: light;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background-color: #f3e9da;
+  font-family: 'Noto Sans KR', system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* 모바일 퍼스트: 앱 영역은 최대 430px, 그 바깥은 은은한 배경 */
+#root {
+  display: flex;
+  justify-content: center;
+}
+
+/* 숫자 인풋 화살표 제거 (date picker 보조) */
+input[type='number']::-webkit-outer-spin-button,
+input[type='number']::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+/* 스크롤바 살짝 숨기기 (모바일 느낌) */
+::-webkit-scrollbar {
+  width: 0px;
+  background: transparent;
+}
