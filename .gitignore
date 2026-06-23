@@ -1,4 +1,13 @@
 .env
+
+# Node / Vite
+node_modules/
+dist-ssr/
+*.local
+npm-debug.log*
+logs/
+
+# Python
 __pycache__/
 *.pyc
 *.pyo
