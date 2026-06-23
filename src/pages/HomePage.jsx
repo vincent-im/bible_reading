@@ -39,7 +39,7 @@ export default function HomePage() {
     <div className="space-y-4">
       {/* 헤더 */}
       <header className="rounded-2xl bg-gradient-to-br from-indigo to-violet-500 p-5 text-white shadow-md">
-        <h1 className="text-xl font-extrabold">📖 다락방 성경통독</h1>
+        <h1 className="text-xl font-extrabold">📖 예본6여 성경통독</h1>
         <p className="mt-1 text-sm opacity-90">
           순원들과 함께 말씀으로 채워가요
         </p>

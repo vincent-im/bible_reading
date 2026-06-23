@@ -3,7 +3,7 @@
   "private": true,
   "version": "1.0.0",
   "type": "module",
-  "description": "다락방 성경통독 앱 - 교회 소모임 순원들과 함께하는 성경통독 진도 관리",
+  "description": "예본6여 성경통독 앱 - 교회 소모임 순원들과 함께하는 성경통독 진도 관리",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
