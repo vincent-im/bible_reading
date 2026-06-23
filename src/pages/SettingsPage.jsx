@@ -27,7 +27,7 @@ export default function SettingsPage() {
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
-    a.download = `다락방통독_백업_${new Date().toISOString().slice(0, 10)}.json`
+    a.download = `예본6여통독_백업_${new Date().toISOString().slice(0, 10)}.json`
     a.click()
     URL.revokeObjectURL(url)
     showToast('백업 파일을 내보냈어요')
@@ -169,7 +169,7 @@ export default function SettingsPage() {
       {/* 앱 정보 */}
       <Section title="앱 정보">
         <div className="space-y-1 text-sm text-gray-500">
-          <InfoRow label="앱 이름" value="다락방 성경통독" />
+          <InfoRow label="앱 이름" value="예본6여 성경통독" />
           <InfoRow label="버전" value="1.0.0" />
           <InfoRow label="전체 장수" value="1,189장 (구약 929 · 신약 260)" />
           <InfoRow label="저장 방식" value="오프라인 (localStorage)" />

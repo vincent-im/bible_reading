@@ -1,6 +1,6 @@
 name: Deploy web app to GitHub Pages
 
-# 웹앱(다락방 성경통독)을 GitHub Pages로 배포합니다.
+# 웹앱(예본6여 성경통독)을 GitHub Pages로 배포합니다.
 # main 푸시 시 자동 배포되며, 수동 실행(Actions 탭 → Run workflow)도 가능합니다.
 on:
   push:
