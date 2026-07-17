@@ -4,6 +4,11 @@ import { useApp } from '../contexts/AppContext'
 import { computeMemberStats } from '../hooks/usePlan'
 import Modal from '../components/common/Modal'
 import MemberForm from '../components/Member/MemberForm'
+import {
+  setSettingsPassword,
+  resetSettingsPassword,
+  DEFAULT_SETTINGS_PW,
+} from '../lib/settingsPassword'
 
 export default function SettingsPage() {
   const { members, addMember, updateMember, removeMember, resetProgress } =
@@ -15,6 +20,12 @@ export default function SettingsPage() {
   const [adding, setAdding] = useState(false)
   const [confirm, setConfirm] = useState(null) // { type, member } | { type:'clearAll' }
   const [toast, setToast] = useState('')
+
+  // 설정 암호 변경
+  const [changingPw, setChangingPw] = useState(false)
+  const [newPw, setNewPw] = useState('')
+  const [confirmPw, setConfirmPw] = useState('')
+  const [pwError, setPwError] = useState('')
 
   const showToast = (msg) => {
     setToast(msg)
@@ -69,6 +80,34 @@ export default function SettingsPage() {
       showToast('모든 데이터를 초기화했어요')
     }
     setConfirm(null)
+  }
+
+  const openChangePw = () => {
+    setNewPw('')
+    setConfirmPw('')
+    setPwError('')
+    setChangingPw(true)
+  }
+
+  const submitChangePw = (e) => {
+    e.preventDefault()
+    const pw = newPw.trim()
+    if (!pw) {
+      setPwError('새 암호를 입력해주세요.')
+      return
+    }
+    if (pw !== confirmPw.trim()) {
+      setPwError('새 암호가 서로 달라요.')
+      return
+    }
+    setSettingsPassword(pw)
+    setChangingPw(false)
+    showToast('설정 암호를 변경했어요')
+  }
+
+  const handleResetPw = () => {
+    resetSettingsPassword()
+    showToast(`설정 암호를 '${DEFAULT_SETTINGS_PW}'로 초기화했어요`)
   }
 
   return (
@@ -226,6 +265,27 @@ export default function SettingsPage() {
         </p>
       </Section>
 
+      {/* 설정 암호 */}
+      <Section title="설정 암호">
+        <p className="mb-3 text-xs text-gray-400">
+          '설정' 탭에 들어올 때 필요한 암호예요. (이 기기에 저장됩니다)
+        </p>
+        <div className="grid grid-cols-2 gap-2">
+          <button
+            onClick={openChangePw}
+            className="rounded-xl bg-indigo/10 py-2.5 text-sm font-semibold text-indigo transition active:scale-95"
+          >
+            🔑 설정 암호변경
+          </button>
+          <button
+            onClick={handleResetPw}
+            className="rounded-xl bg-gray-100 py-2.5 text-sm font-semibold text-gray-600 transition active:scale-95"
+          >
+            ↩️ 초기화
+          </button>
+        </div>
+      </Section>
+
       {/* 편집 모달 */}
       <Modal open={!!editing} onClose={() => setEditing(null)} title="순원 이름 편집">
         {editing && (
@@ -285,6 +345,49 @@ export default function SettingsPage() {
           {confirm?.type === 'clearAll' &&
             '모든 순원과 통독 기록이 삭제돼요. 정말 초기화할까요?'}
         </p>
+      </Modal>
+
+      {/* 설정 암호 변경 모달 */}
+      <Modal
+        open={changingPw}
+        onClose={() => setChangingPw(false)}
+        title="설정 암호 변경"
+      >
+        <form onSubmit={submitChangePw} className="space-y-3">
+          <input
+            type="password"
+            autoFocus
+            value={newPw}
+            onChange={(e) => setNewPw(e.target.value)}
+            placeholder="새 암호"
+            className="w-full rounded-xl border border-gray-200 bg-cream px-4 py-3 text-base text-gray-800 outline-none transition focus:border-indigo focus:ring-2 focus:ring-indigo/20"
+          />
+          <input
+            type="password"
+            value={confirmPw}
+            onChange={(e) => setConfirmPw(e.target.value)}
+            placeholder="새 암호 확인"
+            className="w-full rounded-xl border border-gray-200 bg-cream px-4 py-3 text-base text-gray-800 outline-none transition focus:border-indigo focus:ring-2 focus:ring-indigo/20"
+          />
+          {pwError && (
+            <p className="text-sm font-medium text-red-500">{pwError}</p>
+          )}
+          <div className="flex gap-2 pt-1">
+            <button
+              type="button"
+              onClick={() => setChangingPw(false)}
+              className="flex-1 rounded-xl bg-gray-100 py-3 font-semibold text-gray-600 transition active:scale-95"
+            >
+              취소
+            </button>
+            <button
+              type="submit"
+              className="flex-1 rounded-xl bg-indigo py-3 font-semibold text-white shadow-md transition active:scale-95"
+            >
+              변경
+            </button>
+          </div>
+        </form>
       </Modal>
 
       {/* 토스트 */}
