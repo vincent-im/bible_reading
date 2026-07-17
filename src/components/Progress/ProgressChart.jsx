@@ -9,15 +9,16 @@ import {
   YAxis,
 } from 'recharts'
 
-// 막대 위 레벨 이모지 라벨
-function EmojiLabel({ x, y, width, value }) {
+// 가로 막대 오른쪽 끝의 레벨 이모지 라벨
+function EmojiLabel({ x, y, width, height, value }) {
   if (value == null) return null
   return (
     <text
-      x={x + width / 2}
-      y={y - 8}
-      textAnchor="middle"
-      fontSize="18"
+      x={x + width + 6}
+      y={y + height / 2}
+      textAnchor="start"
+      dominantBaseline="central"
+      fontSize="15"
     >
       {value}
     </text>
@@ -44,7 +45,7 @@ function ChartTooltip({ active, payload, label }) {
   )
 }
 
-// 순원별 달성률 비교 막대그래프
+// 순원별 달성률 비교 (가로 막대: 이름=세로축, 진도율=가로축)
 // data: [{ name, percent, target, color, emoji, readCount }]
 export default function ProgressChart({ data }) {
   if (!data || data.length === 0) {
@@ -55,30 +56,37 @@ export default function ProgressChart({ data }) {
     )
   }
 
-  const height = Math.max(220, 60 + data.length * 16)
+  // 순원마다 한 줄씩 차지 → 이름이 겹치지 않음
+  const height = Math.max(160, data.length * 42 + 44)
 
   return (
-    <div className="rounded-2xl bg-white p-4 pt-6 shadow-md">
+    <div className="rounded-2xl bg-white p-4 pt-5 shadow-md">
       <ResponsiveContainer width="100%" height={height}>
         <BarChart
+          layout="vertical"
           data={data}
-          margin={{ top: 24, right: 8, left: -16, bottom: 0 }}
+          margin={{ top: 4, right: 34, left: 4, bottom: 4 }}
           barGap={2}
         >
+          {/* 진도율 (가로축) */}
           <XAxis
-            dataKey="name"
-            tick={{ fontSize: 12, fill: '#6b7280' }}
-            axisLine={false}
-            tickLine={false}
-            interval={0}
-          />
-          <YAxis
+            type="number"
             domain={[0, 100]}
             ticks={[0, 25, 50, 75, 100]}
             tick={{ fontSize: 11, fill: '#9ca3af' }}
             axisLine={false}
             tickLine={false}
             unit="%"
+          />
+          {/* 순원 이름 (세로축) */}
+          <YAxis
+            type="category"
+            dataKey="name"
+            tick={{ fontSize: 12, fill: '#374151' }}
+            axisLine={false}
+            tickLine={false}
+            width={64}
+            interval={0}
           />
           <Tooltip
             content={<ChartTooltip />}
@@ -88,11 +96,11 @@ export default function ProgressChart({ data }) {
           <Bar
             dataKey="target"
             fill="#E5E7EB"
-            radius={[6, 6, 0, 0]}
-            maxBarSize={26}
+            radius={[0, 6, 6, 0]}
+            maxBarSize={13}
           />
           {/* 실제 달성률 */}
-          <Bar dataKey="percent" radius={[6, 6, 0, 0]} maxBarSize={26}>
+          <Bar dataKey="percent" radius={[0, 6, 6, 0]} maxBarSize={13}>
             {data.map((entry, i) => (
               <Cell key={i} fill={entry.color} />
             ))}
