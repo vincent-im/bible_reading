@@ -8,7 +8,7 @@ import MemberForm from '../components/Member/MemberForm'
 export default function SettingsPage() {
   const { members, addMember, updateMember, removeMember, resetProgress } =
     useMembers()
-  const { setMembers } = useApp()
+  const { setMembers, mode, syncError, remote, lock, refresh } = useApp()
   const fileRef = useRef(null)
 
   const [editing, setEditing] = useState(null) // member or null
@@ -42,6 +42,7 @@ export default function SettingsPage() {
         const parsed = JSON.parse(reader.result)
         if (parsed && Array.isArray(parsed.members)) {
           setMembers(parsed.members)
+          if (remote.enabled) parsed.members.forEach((m) => remote.upsert(m))
           showToast('데이터를 가져왔어요')
         } else {
           showToast('올바른 백업 파일이 아니에요')
@@ -63,6 +64,7 @@ export default function SettingsPage() {
       resetProgress(confirm.member.id)
       showToast('진도를 초기화했어요')
     } else if (confirm.type === 'clearAll') {
+      if (remote.enabled) members.forEach((m) => remote.remove(m.id))
       setMembers([])
       showToast('모든 데이터를 초기화했어요')
     }
@@ -131,11 +133,53 @@ export default function SettingsPage() {
         </div>
       </Section>
 
+      {/* 공용 DB 연결 (원격 모드) */}
+      {mode === 'remote' && (
+        <Section title="공용 DB 연결">
+          <div className="space-y-2">
+            <div className="flex items-center justify-between text-sm">
+              <span className="text-gray-500">상태</span>
+              <span className="flex items-center gap-1.5 font-semibold text-green-600">
+                <span className="inline-block h-2 w-2 rounded-full bg-green-500" />
+                연결됨 (Supabase)
+              </span>
+            </div>
+            <p className="text-[11px] leading-relaxed text-gray-400">
+              순원 이름·통독 현황이 공용 DB에 저장되어, 같은 공유 암호를 쓰는
+              기기끼리 함께 공유됩니다.
+            </p>
+            {syncError && (
+              <p className="rounded-lg bg-red-50 px-3 py-2 text-xs text-red-500">
+                ⚠️ {syncError}
+              </p>
+            )}
+            <div className="grid grid-cols-2 gap-2 pt-1">
+              <button
+                onClick={async () => {
+                  await refresh()
+                  showToast('최신 데이터를 불러왔어요')
+                }}
+                className="rounded-xl bg-indigo/10 py-2.5 text-sm font-semibold text-indigo transition active:scale-95"
+              >
+                🔄 새로고침
+              </button>
+              <button
+                onClick={lock}
+                className="rounded-xl bg-gray-100 py-2.5 text-sm font-semibold text-gray-600 transition active:scale-95"
+              >
+                🔒 암호 잠금
+              </button>
+            </div>
+          </div>
+        </Section>
+      )}
+
       {/* 데이터 관리 */}
       <Section title="데이터 관리">
         <p className="mb-3 text-xs text-gray-400">
-          모든 데이터는 이 기기에만 저장돼요. 기기를 바꾸거나 백업하려면
-          내보내기를 이용하세요.
+          {mode === 'remote'
+            ? '데이터는 공용 DB에 저장돼요. 필요하면 백업 파일로도 내보낼 수 있어요.'
+            : '모든 데이터는 이 기기에만 저장돼요. 기기를 바꾸거나 백업하려면 내보내기를 이용하세요.'}
         </p>
         <div className="grid grid-cols-2 gap-2">
           <button
@@ -172,7 +216,10 @@ export default function SettingsPage() {
           <InfoRow label="앱 이름" value="예본6여 성경통독" />
           <InfoRow label="버전" value="1.0.0" />
           <InfoRow label="전체 장수" value="1,189장 (구약 929 · 신약 260)" />
-          <InfoRow label="저장 방식" value="오프라인 (localStorage)" />
+          <InfoRow
+            label="저장 방식"
+            value={mode === 'remote' ? '공용 DB (Supabase)' : '오프라인 (localStorage)'}
+          />
         </div>
         <p className="mt-3 text-center text-[11px] text-gray-400">
           순장과 순원들의 은혜로운 통독을 응원해요 🙏
