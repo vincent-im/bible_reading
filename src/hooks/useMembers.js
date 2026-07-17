@@ -1,4 +1,4 @@
-import { useCallback } from 'react'
+import { useCallback, useMemo } from 'react'
 import { useApp } from '../contexts/AppContext'
 
 function genId() {
@@ -19,6 +19,15 @@ export default function useMembers() {
     setSelectedMemberId,
     remote,
   } = useApp()
+
+  // 화면 표시는 이름 가나다순으로 정렬 (원본 저장 순서는 그대로 유지)
+  const sortedMembers = useMemo(
+    () =>
+      [...members].sort((a, b) =>
+        (a.name || '').localeCompare(b.name || '', 'ko')
+      ),
+    [members]
+  )
 
   // 현재 순원 조회 헬퍼
   const findMember = useCallback(
@@ -123,7 +132,7 @@ export default function useMembers() {
   const selectedMember = members.find((m) => m.id === selectedMemberId) || null
 
   return {
-    members,
+    members: sortedMembers,
     selectedMemberId,
     selectedMember,
     selectMember: setSelectedMemberId,

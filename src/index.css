@@ -6,22 +6,25 @@
   color-scheme: light;
 }
 
-html,
-body,
-#root {
-  height: 100%;
+/* 높이를 min-height로 두어야 내용(순원 수)이 늘 때 프레임도 함께 확장됨 */
+html {
+  min-height: 100vh;
+  background-color: #f3e9da;
 }
 
 body {
   margin: 0;
+  min-height: 100vh;
   background-color: #f3e9da;
   font-family: 'Noto Sans KR', system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
   -webkit-tap-highlight-color: transparent;
 }
 
-/* 모바일 퍼스트: 앱 영역은 최대 430px, 그 바깥은 은은한 배경 */
+/* 모바일 퍼스트: 앱 영역은 최대 430px, 그 바깥은 은은한 배경.
+   min-height(고정 height 아님)라서 안쪽 크림 프레임이 내용만큼 늘어남 */
 #root {
+  min-height: 100vh;
   display: flex;
   justify-content: center;
 }
