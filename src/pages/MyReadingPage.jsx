@@ -1,13 +1,17 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import useMembers from '../hooks/useMembers'
 import usePlan, { getBookOrder } from '../hooks/usePlan'
 import { BIBLE_BOOKS } from '../data/bibleData'
+import { loadBibleIndex } from '../data/bibleText'
 import DailyInfo from '../components/Plan/DailyInfo'
 import PlanSetup from '../components/Plan/PlanSetup'
 import BookGrid from '../components/Reading/BookGrid'
+import BibleReaderModal from '../components/Reading/BibleReaderModal'
 import Modal from '../components/common/Modal'
 import LevelBadge from '../components/Progress/LevelBadge'
+
+const DIRECT_READ_KEY = 'darakbang_bible_direct'
 
 const FILTERS = [
   { key: 'all', label: '전체' },
@@ -29,6 +33,25 @@ export default function MyReadingPage() {
   const [showPlan, setShowPlan] = useState(false)
   const [showPicker, setShowPicker] = useState(false)
   const [filter, setFilter] = useState('all')
+
+  // 성경 바로읽기 모드 (localStorage 유지)
+  const [directRead, setDirectRead] = useState(() => {
+    try {
+      return localStorage.getItem(DIRECT_READ_KEY) === '1'
+    } catch {
+      return false
+    }
+  })
+  const [reader, setReader] = useState(null) // { bookId, chapter } | null
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(DIRECT_READ_KEY, directRead ? '1' : '0')
+    } catch {
+      /* 무시 */
+    }
+    if (directRead) loadBibleIndex().catch(() => {}) // 본문 미리 불러오기
+  }, [directRead])
 
   const bookOrder = useMemo(() => {
     if (selectedMember?.plan?.startTestament) {
@@ -67,6 +90,15 @@ export default function MyReadingPage() {
   const handleSavePlan = (newPlan) => {
     setMemberPlan(selectedMember.id, newPlan)
     setShowPlan(false)
+  }
+
+  // 장 클릭: 바로읽기 ON이면 본문 팝업, OFF면 읽음 토글
+  const handleChapterClick = (bookId, ch) => {
+    if (directRead) {
+      setReader({ bookId, chapter: ch })
+    } else {
+      toggleChapter(selectedMember.id, bookId, ch)
+    }
   }
 
   return (
@@ -145,6 +177,38 @@ export default function MyReadingPage() {
             ⚙️ 통독 계획 수정 ({selectedMember.plan.startTestament === 'OT' ? '구약부터' : '신약부터'})
           </button>
 
+          {/* 성경 바로읽기 토글 */}
+          <div className="flex items-center justify-between rounded-2xl bg-white p-4 shadow-sm">
+            <div className="min-w-0 pr-3">
+              <div className="flex items-center gap-1.5 text-sm font-bold text-gray-800">
+                📖 성경 바로읽기
+              </div>
+              <p className="mt-0.5 text-[11px] leading-snug text-gray-400">
+                {directRead
+                  ? '장을 누르면 성경 본문을 읽고 «완료»로 읽음 처리해요'
+                  : '장을 누르면 바로 읽음/취소로 토글돼요'}
+              </p>
+            </div>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={directRead}
+              aria-label="성경 바로읽기"
+              onClick={() => setDirectRead((v) => !v)}
+              className={[
+                'relative h-7 w-12 shrink-0 rounded-full transition-colors',
+                directRead ? 'bg-indigo' : 'bg-gray-300',
+              ].join(' ')}
+            >
+              <span
+                className={[
+                  'absolute top-1 h-5 w-5 rounded-full bg-white shadow transition-all',
+                  directRead ? 'left-6' : 'left-1',
+                ].join(' ')}
+              />
+            </button>
+          </div>
+
           {/* 책 그리드 목록 */}
           {visibleBooks.length === 0 ? (
             <div className="rounded-2xl bg-white p-6 text-center text-sm text-gray-400 shadow-sm">
@@ -159,9 +223,7 @@ export default function MyReadingPage() {
                   key={book.id}
                   book={book}
                   statusFor={plan.statusFor}
-                  onToggle={(bookId, ch) =>
-                    toggleChapter(selectedMember.id, bookId, ch)
-                  }
+                  onToggle={handleChapterClick}
                   defaultOpen={
                     filter !== 'all' ||
                     summary[book.id]?.today > 0 ||
@@ -219,6 +281,35 @@ export default function MyReadingPage() {
           ))}
         </div>
       </Modal>
+
+      {/* 성경 본문 팝업 (성경 바로읽기 모드) */}
+      <BibleReaderModal
+        open={!!reader}
+        bookId={reader?.bookId}
+        chapter={reader?.chapter}
+        isRead={reader ? plan.isRead(reader.bookId, reader.chapter) : false}
+        onComplete={() => {
+          if (reader) {
+            markChapters(
+              selectedMember.id,
+              [{ bookId: reader.bookId, chapter: reader.chapter }],
+              true
+            )
+          }
+          setReader(null)
+        }}
+        onUnread={() => {
+          if (reader) {
+            markChapters(
+              selectedMember.id,
+              [{ bookId: reader.bookId, chapter: reader.chapter }],
+              false
+            )
+          }
+          setReader(null)
+        }}
+        onClose={() => setReader(null)}
+      />
     </div>
   )
 }
