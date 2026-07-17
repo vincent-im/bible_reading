@@ -1,9 +1,8 @@
 import { useState } from 'react'
+import { getSettingsPassword } from '../../lib/settingsPassword'
 
 // 설정 화면 진입용 간단 암호 게이트 (순장 전용).
 // 라우트 이동 시 언마운트되므로 설정에 들어올 때마다 암호를 요구한다.
-const SETTINGS_PASSWORD = 'jb'
-
 export default function SettingsGate({ children }) {
   const [unlocked, setUnlocked] = useState(false)
   const [pass, setPass] = useState('')
@@ -13,7 +12,7 @@ export default function SettingsGate({ children }) {
 
   const submit = (e) => {
     e.preventDefault()
-    if (pass === SETTINGS_PASSWORD) {
+    if (pass === getSettingsPassword()) {
       setError('')
       setUnlocked(true)
     } else {
