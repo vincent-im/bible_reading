@@ -2,6 +2,7 @@ import { Route, Routes } from 'react-router-dom'
 import { useApp } from './contexts/AppContext'
 import BottomNav from './components/Layout/BottomNav'
 import Gate from './components/common/Gate'
+import SettingsGate from './components/common/SettingsGate'
 import HomePage from './pages/HomePage'
 import MyReadingPage from './pages/MyReadingPage'
 import ProgressPage from './pages/ProgressPage'
@@ -23,7 +24,14 @@ export default function App() {
           <Route path="/" element={<HomePage />} />
           <Route path="/reading" element={<MyReadingPage />} />
           <Route path="/progress" element={<ProgressPage />} />
-          <Route path="/settings" element={<SettingsPage />} />
+          <Route
+            path="/settings"
+            element={
+              <SettingsGate>
+                <SettingsPage />
+              </SettingsGate>
+            }
+          />
           <Route path="*" element={<HomePage />} />
         </Routes>
       </main>
